@@ -1,5 +1,5 @@
 # A Chinese-Based Long Text Extractive Summarization System Based on the BERT Model
-
+![alt text](data/image.png)
 ## About
 This is a graduate project in CSIE at NTPU, led by two students majoring in STAT. Our focus is on leveraging BERT to summarize social workers' records, with the aim of enhancing their work efficiency.
 
@@ -9,7 +9,6 @@ The rapid development of AI significantly impacts our lives, and natural languag
 We have designed a BERT-based relevance scoring mechanism inspired by cogLTX to identify valuable sentences. Then, employing techniques such as sentence embedding, we feed the output into another BERT model (the reasoner) to summarize the paragraph within the domain of social work.
 
 ## Proposed Framework
-![alt text](data/image.png)
 1. Data preprocessingpass 
 2. Semantic scoring model (Judge)
 3. Judge model training
@@ -22,9 +21,9 @@ We have designed a BERT-based relevance scoring mechanism inspired by cogLTX to 
 10. Actual deployment
 11. Joint training
 
-![alt text](data/image-1.png)
+<!-- ![alt text](data/image-1.png) -->
 
-Implementation details to be filled out ...
+> Implementation details to be filled out ...
 
 ## Experiment
 pass
