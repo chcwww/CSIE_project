@@ -4,7 +4,7 @@
 This is a graduate project in CSIE at NTPU, led by two students majoring in STAT. Our focus is on leveraging BERT to summarize social workers' records, with the aim of enhancing their work efficiency.
 
 ## Abstract
-The rapid development of AI significantly impacts our lives, and natural language processing (NLP) stands out as a rapidly evolving technique. However in the realm of Chinese-based NLP, the developments differ significantly from English NLP. 
+The rapid development of AI significantly impacts our lives, and natural language processing (NLP) stands out as a rapidly evolving field. However in the realm of Chinese-based NLP, the developments differ significantly from English NLP. 
 
 We have designed a BERT-based relevance scoring mechanism inspired by cogLTX to identify valuable sentences. Then, employing techniques such as sentence embedding, we feed the output into another BERT model (the reasoner) to summarize the paragraph within the domain of social work.
 
