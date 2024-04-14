@@ -32,4 +32,4 @@ pass
 ## Conclusion and Expected Outcomes
 In the field of text summarization, we've observed a lack of mature Chinese-based long text models. In our project, we introduce a workflow specifically designed to handle Chinese long texts. We aim to uncover the underlying relevance between sentences and ultimately extract valuable information from paragraphs within the domain of social work. We hope that our project's contribution will offer social workers an efficient way of familiarizing themselves with their clients' cases.
 
-This project was uploaded to GitHub on April 14, 2024.
+> This project was uploaded to GitHub on April 14, 2024.
