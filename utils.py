@@ -3,6 +3,7 @@ DEFAULT_MODEL_NAME = "luhua/chinese_pretrain_mrc_roberta_wwm_ext_large"
 BLOCK_SIZE = 63 # The max length of an episode
 BLOCK_MIN = 10 # The min length of an episode
 
+# check change
 def convert_caps(s): # 得到小寫
     # ret = []
     # for word in s.split():
