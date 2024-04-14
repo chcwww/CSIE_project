@@ -9,7 +9,7 @@ The rapid development of AI significantly impacts our lives, and natural languag
 We have designed a BERT-based relevance scoring mechanism inspired by cogLTX to identify valuable sentences. Then, employing techniques such as sentence embedding, we feed the output into another BERT model (the reasoner) to summarize the paragraph within the domain of social work.
 
 ## Proposed Framework
-![alt text](image.png)
+![alt text](data/image.png)
 1. Data preprocessingpass 
 2. Semantic scoring model (Judge)
 3. Judge model training
@@ -22,7 +22,7 @@ We have designed a BERT-based relevance scoring mechanism inspired by cogLTX to 
 10. Actual deployment
 11. Joint training
 
-![alt text](image-1.png)
+![alt text](data/image-1.png)
 
 Implementation details to be filled out ...
 

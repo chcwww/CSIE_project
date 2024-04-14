@@ -12,11 +12,11 @@ from torch.utils.data.distributed import DistributedSampler
 import pytorch_lightning as pl
 from transformers import AutoTokenizer, AutoModel
 
-from optimization import WarmupLinearLR
-from models import Introspector, QAReasoner
-from utils import CAPACITY
-from buffer import buffer_collate
-from memreplay import _score_blocks
+from utils.optimization import WarmupLinearLR
+from utils.util import CAPACITY
+from utils.memreplay import _score_blocks
+from scripts.buffer import buffer_collate
+from models.model import Introspector, QAReasoner
 
 class IntrospectorModule(pl.LightningModule):
 

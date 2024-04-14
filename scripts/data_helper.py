@@ -8,8 +8,8 @@ import torch
 from torch.utils.data import Dataset
 from tqdm import tqdm
 
-from buffer import Buffer
-from utils import CAPACITY, BLOCK_SIZE, BLOCK_MIN
+from scripts.buffer import Buffer
+from utils.util import CAPACITY, BLOCK_SIZE, BLOCK_MIN
 
 class SimpleListDataset(Dataset):
     def __init__(self, source):

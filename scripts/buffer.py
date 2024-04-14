@@ -1,7 +1,7 @@
 import torch
 from copy import copy
 from transformers import AutoTokenizer
-from utils import CAPACITY, BLOCK_SIZE, DEFAULT_MODEL_NAME
+from utils.util import CAPACITY, BLOCK_SIZE, DEFAULT_MODEL_NAME
 import random
 from bisect import bisect_left
 from itertools import chain

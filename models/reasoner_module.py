@@ -12,10 +12,10 @@ from torch.utils.data.distributed import DistributedSampler
 import pytorch_lightning as pl
 from transformers import AutoTokenizer, AutoModel
 
-from optimization import WarmupLinearLR
-from models import *
-from utils import CAPACITY, ForkedPdb
-from buffer import buffer_collate
+from utils.optimization import WarmupLinearLR
+from utils.util import CAPACITY, ForkedPdb
+from scripts.buffer import buffer_collate
+from models.model import *
 
 class ReasonerModule(pl.LightningModule):
  

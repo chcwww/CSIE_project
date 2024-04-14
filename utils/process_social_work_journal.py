@@ -1,13 +1,14 @@
 # %%
+import os
 import sys
-sys.path.append(r'C:\\vs_code_python\\cogLTX')
+print(f"Dir now : {os.getcwd()}")
+
+# sys.path.append(r'C:\\vs_code_python\\cogLTX')
 import re
 import json
 from tqdm import tqdm, trange
 from transformers import AutoModel, AutoTokenizer
 from itertools import chain
-import os
-import sys
 import pickle
 import logging
 import pdb
@@ -16,8 +17,10 @@ import string
 
 root_dir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 sys.path.append(root_dir)
-from buffer import Buffer, Block
-from utils import DEFAULT_MODEL_NAME
+
+# from scripts import buffer.Buffer, buffer.Block
+from scripts.buffer import Buffer, Block
+from utils.util import DEFAULT_MODEL_NAME
 # from hotpotqa.cogqa_utils import find_start_end_after_tokenized
 
 # from sklearn.datasets import fetch_20newsgroups

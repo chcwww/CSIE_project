@@ -5,16 +5,16 @@ import pdb
 import json
 from copy import copy
 from transformers import AutoTokenizer
-
-import os 
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+print(f"Dir now : {os.getcwd()}")
+# import os 
+# os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 # from collections.abc import Mapping
 
-from main_loop import main_loop, prediction, main_parser
-from models import ClassificationReasoner
-from buffer import Buffer
-from utils import CAPACITY
+from scripts.main_loop import main_loop, prediction, main_parser
+from models.model import ClassificationReasoner
+from scripts import buffer
+from utils.util import CAPACITY
 if __name__ == "__main__": 
     CUDA_VISIBLE_DEVICES=0
     print('Please confirm the social work journal data are ready by ./cogLTX/process_social_work_journal.py!')
@@ -27,8 +27,8 @@ if __name__ == "__main__":
     # ---------------------------------------------
     parser = main_parser(parser) # 加上其他一大堆parser (在main_loop.py裡面) (上面兩個是專門為資料集而設置的 也就是用不同資料集會有不同的initial parser 之後再加上general的parser)
     parser.set_defaults(
-        train_source = os.path.join('c:\\vs_code_python', 'data', '20news_train.pkl'),
-        test_source = os.path.join('c:\\vs_code_python', 'data', '20news_test.pkl')
+        train_source = os.path.join(os.getcwd(), 'data', '20news_train.pkl'),
+        test_source = os.path.join(os.getcwd(), 'data', '20news_test.pkl')
     )
     config = parser.parse_args()
     # config.reasoner_cls_name = 'ClassificationReasoner' # 這個任務是要做分類

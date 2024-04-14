@@ -19,14 +19,15 @@ from pytorch_lightning.logging import TensorBoardLogger
 
 import sys
 # sys.path.append(r'C:\\vs_code_python\\cogLTX')
-from data_helper import SimpleListDataset, BlkPosInterface, find_lastest_checkpoint
-from introspector_module import IntrospectorModule
-from reasoner_module import ReasonerModule
-from memreplay import mem_replay
+from utils.memreplay import mem_replay
+from scripts.data_helper import SimpleListDataset, BlkPosInterface, find_lastest_checkpoint
+from scripts.buffer import Buffer
+from models.introspector_module import IntrospectorModule
+from models.reasoner_module import ReasonerModule
 # from initialize_relevance import init_relevance
 
 from copy import copy
-from buffer import Buffer
+
 
 def main_loop(config):
     # tokenizer = AutoTokenizer.from_pretrained(config.model_name)
@@ -108,9 +109,9 @@ def main_parser(parser=None):
     if parser is None:
         parser = ArgumentParser()
     
-    parser.add_argument("--save_dir", type=str, default=os.path.join(os.getcwd(), 'saved_dir'), help="saving models")
-    parser.add_argument("--tmp_dir", type=str, default=os.path.join(os.getcwd(), 'tmp_dir'), help="saving ddp tmp files")
-    parser.add_argument("--log_dir", type=str, default=os.path.join(os.getcwd(), 'log_dir'), help="saving logs")
+    parser.add_argument("--save_dir", type=str, default=os.path.join(os.getcwd(), 'load_dir', 'saved_dir'), help="saving models")
+    parser.add_argument("--tmp_dir", type=str, default=os.path.join(os.getcwd(), 'load_dir', 'tmp_dir'), help="saving ddp tmp files")
+    parser.add_argument("--log_dir", type=str, default=os.path.join(os.getcwd(), 'load_dir', 'log_dir'), help="saving logs")
     parser.add_argument("--num_epochs", type=int, default=2, help="num epoch")
     parser.add_argument('--model_name', type=str, default='roberta-base', help='name of pretrained models')
     parser.add_argument('--version', type=int, default=0, help='the version to save or restore')

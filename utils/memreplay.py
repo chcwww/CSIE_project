@@ -1,8 +1,8 @@
 import torch
 import torch.nn.functional as F
 
-from utils import CAPACITY
-from buffer import Buffer
+from utils.util import CAPACITY
+from scripts.buffer import Buffer
 
 def _score_blocks(qbuf, relevance_token):
     ends = qbuf.block_ends()

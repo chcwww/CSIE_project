@@ -1,6 +1,6 @@
 # %%
 import os
-from data_helper import find_lastest_checkpoint
+from scripts.data_helper import find_lastest_checkpoint
 root_dir = os.path.abspath(os.path.dirname(__file__))
 for model_dir in os.listdir(os.path.join(root_dir, 'save_dir')):
     for version_dir in os.listdir(os.path.join(root_dir, 'save_dir', model_dir)):
