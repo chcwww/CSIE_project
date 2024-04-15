@@ -10,6 +10,7 @@ print(f"Dir now : {os.getcwd()}")
 # os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 # from collections.abc import Mapping
+import numpy as np
 
 from scripts.main_loop import main_loop, prediction, main_parser
 from models.model import ClassificationReasoner
