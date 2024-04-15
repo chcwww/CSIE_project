@@ -251,6 +251,7 @@ def get_args():
     # parser.add_argument('--amp', action='store_true', default=False, help='Use mixed precision')
     # parser.add_argument('--bilinear', action='store_true', default=False, help='Use bilinear upsampling')
     parser.add_argument('--classes', '-c', type=int, default=2, help='Number of classes')
+    parser.add_argument('--log-level', '-g', type=bool, default=False, help='')
 
     return parser.parse_args()
 
@@ -258,7 +259,7 @@ def get_args():
 if __name__ == '__main__':
     args = get_args()
 
-    logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+    logging.basicConfig(level=logging.DEBUG if args.log_level else logging.INFO, format='%(levelname)s: %(message)s')
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     logging.info(f'Using device {device}')
 

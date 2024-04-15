@@ -3,6 +3,7 @@ import torch.nn.functional as F
 from transformers import AutoConfig, AutoModel, BertPreTrainedModel, RobertaConfig, RobertaModel, RobertaForSequenceClassification
 from torch.nn import CrossEntropyLoss, MSELoss
 from transformers.modeling_outputs import TokenClassifierOutput
+import logging
 
 # check branch
 class Introspector(BertPreTrainedModel):
@@ -242,7 +243,7 @@ class ALLonBert(BertPreTrainedModel, Reasoner) :
         )
         
 
-        print()
+        logging.debug()
         cls_list = []
         for ina in input_ids :
             cls_tmp = []
@@ -256,20 +257,20 @@ class ALLonBert(BertPreTrainedModel, Reasoner) :
                 text_tmp.append(ink)
             cls_list.append(cls_tmp)
             # print(cls_tmp)
-            print("".join(self.tokenizer.convert_ids_to_tokens(text_tmp)))
-            print("\n========================\n")
-        print("################################")
+            logging.debug("".join(self.tokenizer.convert_ids_to_tokens(text_tmp)))
+            logging.debug("\n========================\n")
+        logging.debug("################################")
 
-        print("我是labels :")
-        print(labels)
-        print(f"POS here : {pos}") # 他們各是第幾句
+        logging.debug("我是labels :")
+        logging.debug(labels)
+        logging.debug(f"POS here : {pos}") # 他們各是第幾句
 
         sequence_outputs = outputs[0] # last_hidden_state
 
         sequence_outputs = self.dropouts(sequence_outputs)
         
-        print("我是cls_list :")
-        print(cls_list)
+        logging.debug("我是cls_list :")
+        logging.debug(cls_list)
         s_o = sequence_outputs.shape
         logits_list = []
         for nu, c_l in enumerate(cls_list) : # 為了避免每組的Block數不一樣 所以全部分開預測
@@ -297,7 +298,7 @@ class ALLonBert(BertPreTrainedModel, Reasoner) :
                 if soft_max[sn] == 1 and ou != -1 : # 如果預測成1(重點block)以及這不是qbuf的[CLS]那塊
                     pred[ou] = 1 # 相應預測之block為1
             pred.requires_grad = True # 讓loss可以backward
-            print(f"pred : {pred.view(-1)}, label : {torch.tensor(labels[ba]).view(-1)}")
+            logging.debug(f"pred : {pred.view(-1)}, label : {torch.tensor(labels[ba]).view(-1)}")
             loss = loss_func(pred.float().view(-1).to(self.device), torch.tensor(labels[ba]).float().view(-1).to(self.device)) # 算cross entropy
             losses.append(loss)
         # pred = torch.zeros(len(labels), len(labels[0]), dtype=torch.long, device=self.device)
