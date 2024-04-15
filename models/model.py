@@ -243,7 +243,7 @@ class ALLonBert(BertPreTrainedModel, Reasoner) :
         )
         
 
-        logging.debug()
+        logging.debug('\n')
         cls_list = []
         for ina in input_ids :
             cls_tmp = []

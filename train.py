@@ -269,7 +269,7 @@ if __name__ == '__main__':
     models.append(Introspector.from_pretrained(MODEL_NAME))
     models.append(ALLonBert.from_pretrained(MODEL_NAME))
 
-    logging.info(f'Network:\n\t## Judge:\n\t\t{models[0]}\n\n\t## Reasoner:\n\t\t{models[1]}')
+    logging.debug(f'Network:\n\t## Judge:\n\t\t{models[0]}\n\n\t## Reasoner:\n\t\t{models[1]}')
 
     if args.load: # 之後再改 反正先False
         state_dict = torch.load(args.load, map_location=device)
