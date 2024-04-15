@@ -136,7 +136,7 @@ def train_model(
 
             model.train()
             epoch_loss = [0, 0]
-            with tqdm(total=n_train*2, desc=f'Epoch {epoch}/{epochs}', unit='para') as pbar:
+            with tqdm(total=n_train*2, desc=f'Epoch {epoch}/{epochs}', unit=' item') as pbar:
 
                 for bufs in train_loader : # batch 也許可以考慮一個batch是 J -> R -> J
 
@@ -174,6 +174,8 @@ def train_model(
                     optimizer[m_idx].step()
 
                     pbar.update(len(train_loader)) # 吧?
+                    logging.info(f"Loader len : {len(train_loader)}")
+                    
                     global_step += 1
                     epoch_loss[m_idx] += loss.item()
                     # experiment.log({
@@ -181,7 +183,8 @@ def train_model(
                     #     'step': global_step,
                     #     'epoch': epoch
                     # })
-                    pbar.set_postfix(**{'loss (batch)': loss.item()})
+                    pbar.set_postfix(**{'loss (batch)': loss.item()}) # 這東西顯示怪怪的
+                    
 
                     # Evaluation round
                     # division_step = (n_train // (5 * batch_size))
