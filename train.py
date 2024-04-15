@@ -159,7 +159,7 @@ def train_model(
                         loss, logits = model(*inputs[:3], labels=inputs[3])
                         if temp_loss is not None :
                             logging.info(f"\n#########\nAdd Reasoner Loss\n#########\n")
-                            t_loss = temp_loss.item()
+                            t_loss = temp_loss
                             loss += t_loss # connect the Reasoner loss below
                         for i, buf in enumerate(bufs):
                             _write_estimation(_file, buf, _score_blocks(buf, torch.sigmoid(logits[i]))) # 把這輪跑完的relevance更新到檔案上
