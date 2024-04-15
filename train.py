@@ -116,7 +116,9 @@ def train_model(
         temp_loss = None
         for m_idx, model in enumerate(models) :
             m_name = "Judge" if not m_idx else "Reasoner"
-            print(f"Training {m_name}...")
+            # print(f"Training {m_name}...")
+            logging.info(f"\n\n{'=' * 10} {m_name:^10} {'=' * 10}\n\n")
+            logging.info(f"\n\n{'=' * 10} {temp_loss:^10} {'=' * 10}\n\n")
             # 建一個新的記錄檔
             if m_idx == 0 :
                 _file = open(Path(os.path.join(TMP_DIR, 'estimations_{}.txt'.format(device))), 'w')
@@ -179,7 +181,7 @@ def train_model(
                     optimizer[m_idx].step()
 
                     pbar.update(len(train_loader)) # 吧?
-                    logging.info(f"Loader len : {len(train_loader)}")
+                    logging.debug(f"Loader len : {len(train_loader)}")
 
                     global_step += 1
                     epoch_loss[m_idx] += loss.item()
@@ -233,7 +235,7 @@ def train_model(
                 torch.save(state_dict, str(dir_ch_this / 'checkpoint_epoch{}.pth'.format(epoch)))
                 logging.info(f'Model {m_name} : Checkpoint {epoch} saved!')
 
-            logging.info(f'### Model {m_name} : epoch loss -> {epoch_loss[m_idx]}')
+            logging.info(f'Model {m_name} : epoch loss -> {epoch_loss[m_idx]}')
 
             
 
