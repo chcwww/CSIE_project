@@ -118,7 +118,8 @@ def train_model(
             m_name = "Judge" if not m_idx else "Reasoner"
             # print(f"Training {m_name}...")
             logging.info(f"\n\n{'=' * 10} {m_name:^10} {'=' * 10}\n\n")
-            logging.info(f"\n\n{'=' * 10} {temp_loss:^10} {'=' * 10}\n\n")
+            if temp_loss is not None :
+                logging.info(f"\n\n{'=' * 10} {temp_loss:^10} {'=' * 10}\n\n")
             # 建一個新的記錄檔
             if m_idx == 0 :
                 _file = open(Path(os.path.join(TMP_DIR, 'estimations_{}.txt'.format(device))), 'w')
