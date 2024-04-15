@@ -113,6 +113,7 @@ def train_model(
     # 5. Begin training
     for epoch in range(1, epochs + 1):
         # Update interface
+        temp_loss = None
         for m_idx, model in enumerate(models) :
             m_name = "Judge" if not m_idx else "Reasoner"
             print(f"Training {m_name}...")
@@ -150,6 +151,8 @@ def train_model(
                             buf.export_relevance(device=device, out=inputs[3, i]) # 用來設定judge的label(由relevance)
                         # Label the relevance by the current reasoner  
                         loss, logits = model(*inputs[:3], labels=inputs[3])
+                        if temp_loss is not None :
+                            loss += temp_loss # connect the Reasoner loss below
                         for i, buf in enumerate(bufs):
                             _write_estimation(_file, buf, _score_blocks(buf, torch.sigmoid(logits[i]))) # 把這輪跑完的relevance更新到檔案上
                     else :
@@ -165,6 +168,7 @@ def train_model(
                         result = model(*inputs, labels=labels, pos = blk_pos)
                         result = result[0] if isinstance(result, tuple) else result
                         loss = result.mean()
+                        temp_loss = loss # connect the Judge loss above
 
                     # with torch.autocast(device.type if device.type != 'mps' else 'cpu', enabled=amp): # 混和精度
 
@@ -175,7 +179,7 @@ def train_model(
 
                     pbar.update(len(train_loader)) # 吧?
                     logging.info(f"Loader len : {len(train_loader)}")
-                    
+
                     global_step += 1
                     epoch_loss[m_idx] += loss.item()
                     # experiment.log({
