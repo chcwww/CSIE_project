@@ -143,10 +143,11 @@ def train_model(
 
             model.train()
             epoch_loss = [0, 0]
+            batch_steps = 0
             with tqdm(total=n_train*2, desc=f'Epoch {epoch}/{epochs}', unit=' item') as pbar:
 
                 for bufs in train_loader : # batch 也許可以考慮一個batch是 J -> R -> J
-
+                    batch_steps += 1
                     if m_idx == 0 :
                         # images, true_masks = batch['image'], batch['mask']
                         inputs = torch.zeros(4, len(bufs), CAPACITY, dtype=torch.long, device=device)
@@ -235,6 +236,7 @@ def train_model(
                 scheduler[m_idx].step(loss)
             
             _file.close()
+            temp_loss /= batch_steps
             
             if save_checkpoint:
                 dir_ch_this = Path(dir_checkpoint / 'checkpoint' / m_name)
