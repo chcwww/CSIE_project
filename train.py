@@ -265,6 +265,8 @@ def get_args():
     # parser.add_argument('--bilinear', action='store_true', default=False, help='Use bilinear upsampling')
     parser.add_argument('--classes', '-c', type=int, default=2, help='Number of classes')
     parser.add_argument('--log-level', '-g', type=bool, default=False, help='')
+    parser.add_argument('--load', '-f', type=str, default=False, help='Load model from a .pth file')
+    parser.add_argument('--model-name', '-m', type=str, default=None, help='Specifiy the name of BERT pre-trained model')
 
     return parser.parse_args()
 
@@ -277,6 +279,8 @@ if __name__ == '__main__':
     logging.info(f'Using device {device}')
 
     # Set Model and Tokenizer
+    if args.model_name is not None :
+        MODEL_NAME = args.model_name
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
     models = []
     models.append(Introspector.from_pretrained(MODEL_NAME))
