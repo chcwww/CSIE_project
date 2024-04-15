@@ -246,7 +246,7 @@ def train_model(
                 torch.save(state_dict, str(dir_ch_this / 'checkpoint_epoch{}.pth'.format(epoch)))
                 logging.info(f'Model {m_name} : Checkpoint {epoch} saved!')
 
-            logging.info(f'Model {m_name} : epoch loss -> {epoch_loss[m_idx]}')
+            logging.info(f'Model {m_name} : epoch loss -> {epoch_loss[m_idx] / batch_steps}')
 
             
 
