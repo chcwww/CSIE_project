@@ -111,15 +111,15 @@ def train_model(
     global_step = 0
 
     # 5. Begin training
+    temp_loss = None
     for epoch in range(1, epochs + 1):
         # Update interface
-        temp_loss = None
         for m_idx, model in enumerate(models) :
             m_name = "Judge" if not m_idx else "Reasoner"
             # print(f"Training {m_name}...")
             logging.info(f"\n\n{'=' * 10} {m_name:^10} {'=' * 10}\n\n")
             if temp_loss is not None :
-                logging.info(f"\n\n{'=' * 10} {temp_loss:^10} {'=' * 10}\n\n")
+                logging.debug(f"\n\n{'=' * 10} {temp_loss:^10} {'=' * 10}\n\n")
             # 建一個新的記錄檔
             if m_idx == 0 :
                 _file = open(Path(os.path.join(TMP_DIR, 'estimations_{}.txt'.format(device))), 'w')
@@ -130,6 +130,8 @@ def train_model(
             if m_idx == 0 : # Judge
                 train_set = interface.build_random_buffer(num_samples = '1,1,1,1') # 我其實也還不知道這怎麼搞
             else : # Reasoner
+                if temp_loss is not None :
+                    temp_loss = None
                 interface.collect_estimations_from_dir(TMP_DIR)
                 train_set = interface.build_promising_buffer(num_samples = '1,1,1,1')
                 
@@ -172,7 +174,10 @@ def train_model(
                         result = model(*inputs, labels=labels, pos = blk_pos)
                         result = result[0] if isinstance(result, tuple) else result
                         loss = result.mean()
-                        temp_loss = loss # connect the Judge loss above
+                        if temp_loss is not None :
+                            temp_loss += loss # connect the Judge loss above
+                        else :
+                            temp_loss = loss
 
                     # with torch.autocast(device.type if device.type != 'mps' else 'cpu', enabled=amp): # 混和精度
 
