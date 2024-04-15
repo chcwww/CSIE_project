@@ -236,7 +236,8 @@ def train_model(
                 scheduler[m_idx].step(loss)
             
             _file.close()
-            temp_loss /= batch_steps
+            if temp_loss is not None :
+                temp_loss /= batch_steps
             
             if save_checkpoint:
                 dir_ch_this = Path(dir_checkpoint / 'checkpoint' / m_name)
