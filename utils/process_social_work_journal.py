@@ -175,8 +175,8 @@ def process(para, dataset_name):
     tokenizer = AutoTokenizer.from_pretrained(DEFAULT_MODEL_NAME)
     cnt, batches = 0, []
     target_names = ['not_taken', 'taken']
-    # for i in tqdm(range(len(para[0]))):
-    for i in trange(10):
+    for i in tqdm(range(len(para[0]))):
+    # for i in trange(10):
         # print(i)
         # d, l = clean(para[i]), random.randrange(0, 2) # random是亂打的，就是亂給他一個label
         d, l = para[0][i], [para[1][0][i], para[1][1][i] ] # [ 內文, 標籤相關 ([ 答案token位置, 答案block位置 ]) ] 
