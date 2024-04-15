@@ -7,7 +7,7 @@ import sys
 from pathlib import Path # 會幫忙處理路徑格式
 from tqdm import tqdm
 from transformers import AutoTokenizer, AutoModel
-from copy import copy
+from copy import deepcopy
 
 ## torch
 import torch
@@ -159,7 +159,7 @@ def train_model(
                         loss, logits = model(*inputs[:3], labels=inputs[3])
                         if temp_loss is not None :
                             logging.info(f"\n#########\nAdd Reasoner Loss\n#########\n")
-                            t_loss = temp_loss.copy()
+                            t_loss = deepcopy(temp_loss)
                             loss += t_loss # connect the Reasoner loss below
                         for i, buf in enumerate(bufs):
                             _write_estimation(_file, buf, _score_blocks(buf, torch.sigmoid(logits[i]))) # 把這輪跑完的relevance更新到檔案上
@@ -179,7 +179,7 @@ def train_model(
                         if temp_loss is not None :
                             temp_loss += loss # connect the Judge loss above
                         else :
-                            temp_loss = loss.copy()
+                            temp_loss = deepcopy(loss)
 
                     # with torch.autocast(device.type if device.type != 'mps' else 'cpu', enabled=amp): # 混和精度
 
