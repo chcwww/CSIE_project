@@ -106,7 +106,7 @@ def train_model(
     
 
     # grad_scaler = torch.cuda.amp.GradScaler(enabled=amp)
-    criterion = nn.CrossEntropyLoss() 
+    # criterion = nn.CrossEntropyLoss() 
     # if model.n_classes > 1 else nn.BCEWithLogitsLoss()
     global_step = 0
 
@@ -241,7 +241,7 @@ def train_model(
 def get_args():
     parser = argparse.ArgumentParser(description='Train the ALLonBERT on social work data')
     parser.add_argument('--epochs', '-e', metavar='E', type=int, default=5, help='Number of epochs')
-    parser.add_argument('--batch-size', '-b', dest='batch_size', metavar='B', type=int, default=1, help='Batch size')
+    parser.add_argument('--batch-size', '-b', dest='batch_size', metavar='B', type=int, default=4, help='Batch size')
     parser.add_argument('--learning-rate', '-l', metavar='LR', type=float, default=1e-5,
                         help='Learning rate', dest='lr')
     parser.add_argument('--load', '-f', type=str, default=False, help='Load model from a .pth file')
