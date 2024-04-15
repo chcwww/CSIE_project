@@ -159,7 +159,7 @@ def train_model(
                         loss, logits = model(*inputs[:3], labels=inputs[3])
                         if temp_loss is not None :
                             logging.info(f"\n#########\nAdd Reasoner Loss\n#########\n")
-                            t_loss = deepcopy(temp_loss)
+                            t_loss = temp_loss.item()
                             loss += t_loss # connect the Reasoner loss below
                         for i, buf in enumerate(bufs):
                             _write_estimation(_file, buf, _score_blocks(buf, torch.sigmoid(logits[i]))) # 把這輪跑完的relevance更新到檔案上
@@ -177,9 +177,9 @@ def train_model(
                         result = result[0] if isinstance(result, tuple) else result
                         loss = result.mean()
                         if temp_loss is not None :
-                            temp_loss += loss # connect the Judge loss above
+                            temp_loss += loss.item() # connect the Judge loss above
                         else :
-                            temp_loss = deepcopy(loss)
+                            temp_loss = loss.item()
 
                     # with torch.autocast(device.type if device.type != 'mps' else 'cpu', enabled=amp): # 混和精度
 
