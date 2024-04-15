@@ -12,18 +12,18 @@ import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
-import pytorch_lightning as pl
-from pytorch_lightning import Trainer
+# import pytorch_lightning as pl
+# from pytorch_lightning import Trainer
 from transformers import AutoTokenizer, AutoModel
-from pytorch_lightning.logging import TensorBoardLogger
+# from pytorch_lightning.logging import TensorBoardLogger
 
 import sys
 # sys.path.append(r'C:\\vs_code_python\\cogLTX')
 from utils.memreplay import mem_replay
 from scripts.data_helper import SimpleListDataset, BlkPosInterface, find_lastest_checkpoint
 from scripts.buffer import Buffer
-from models.introspector_module import IntrospectorModule
-from models.reasoner_module import ReasonerModule
+from DISCARD.introspector_module import IntrospectorModule
+from DISCARD.reasoner_module import ReasonerModule
 # from initialize_relevance import init_relevance
 
 from copy import copy

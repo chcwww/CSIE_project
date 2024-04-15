@@ -11,7 +11,7 @@ print(f"Dir now : {os.getcwd()}")
 
 # from collections.abc import Mapping
 
-from scripts.main_loop import main_loop, prediction, main_parser
+from DISCARD.main_loop import main_loop, prediction, main_parser
 from models.model import ClassificationReasoner
 from scripts import buffer
 from utils.util import CAPACITY

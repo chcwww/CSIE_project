@@ -311,7 +311,7 @@ class Buffer:
                     get_blk_pos.append(b.place) # 放在後面避免前面error了
         except :
             print('There are toooooo many blocks...')
-        print(f"Here is pos (place) : {get_blk_pos}")
+        print(f"\nHere is pos (place) : {get_blk_pos}")
         return ids, att_masks, type_ids, get_blk_pos
 
     def export_as_batch(self, device, length=BLOCK_SIZE+1, add_cls=False):

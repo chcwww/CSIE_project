@@ -9,7 +9,7 @@ import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
-import pytorch_lightning as pl
+# import pytorch_lightning as pl
 from transformers import AutoTokenizer, AutoModel
 
 from utils.optimization import WarmupLinearLR

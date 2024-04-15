@@ -194,10 +194,10 @@ class ClassificationReasoner(RobertaForSequenceClassification, Reasoner):
         return outputs  # (loss), logits, (hidden_states), (attentions)
     
 
-class aLLonBert(BertPreTrainedModel, Reasoner) :
+class ALLonBert(BertPreTrainedModel, Reasoner) :
 
     def __init__(self, config) :
-        super(aLLonBert, self).__init__(config)
+        super(ALLonBert, self).__init__(config)
         from transformers import AutoTokenizer
         self.dropouts = torch.nn.Dropout(0.1)
         self.roberta = RobertaModel(config)

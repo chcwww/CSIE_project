@@ -7,13 +7,16 @@ import random
 import torch
 from torch.utils.data import Dataset
 from tqdm import tqdm
+from pathlib import Path
+import numpy as np
 
 from scripts.buffer import Buffer
 from utils.util import CAPACITY, BLOCK_SIZE, BLOCK_MIN
 
 class SimpleListDataset(Dataset):
     def __init__(self, source):
-        if isinstance(source, str):
+        ## 外面換成Path了所以原本的這個檢查不出來，會看成list
+        if isinstance(source, Path):
             with open(source, 'rb') as fin:
                 logging.info('Loading dataset...')
                 self.dataset = pickle.load(fin)
@@ -22,7 +25,7 @@ class SimpleListDataset(Dataset):
         if not isinstance(self.dataset, list):
             raise ValueError('The source of SimpleListDataset is not a list.')
     def __getitem__(self, index):
-        return self.dataset[index] 
+        return self.dataset[index]
     def __len__(self):
         return len(self.dataset)
 
@@ -69,7 +72,7 @@ class BlkPosInterface:
                         self.d[pos].estimation = estimation
                 os.replace(filename, os.path.join(tmp_dir, 'backup_' + shortname))
 
-    def build_random_buffer(self, num_samples):
+    def build_random_buffer(self, num_samples): 
         n0, n1 = [int(s) for s in num_samples.split(',')][:2]
         ret = []
         max_blk_num = CAPACITY // (BLOCK_SIZE + 1)
