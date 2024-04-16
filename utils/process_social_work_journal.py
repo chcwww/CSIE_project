@@ -129,7 +129,7 @@ def pdftext_to_para(text_data) :
   # [ [ 訓練內文, [訓練標籤相關, 原文本位置] ], [ 測試內文, [測試標籤相關, 原文本位置] ] ]
 
 import pandas as pd
-text_data = pd.read_csv(r"C:\Users\chcww\Downloads\社會期刊訓練資料集.csv")
+text_data = pd.read_csv(r"C:\Users\chcww\Downloads\社會期刊訓練資料集_threshold_0p3.csv")
 
 # import random
 
