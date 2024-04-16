@@ -36,7 +36,7 @@ def _write_estimation(_file, buf, relevance_blk):
 def _write_changes(_file, blk, key, value): # intervention才會用到的東西
     _file.write('{} {} {}\n'.format(blk.pos, key, value))
 
-def _intervention(bufs, labels, crucials, loss_reasoner, model) :
+def _intervention(_file, bufs, labels, crucials, loss_reasoner, model) :
     loss_reasoner = torch.FloatTensor(loss_reasoner).detach() # 這輪本來的Loss
 
     # Paper default parameter :
@@ -95,10 +95,10 @@ def _intervention(bufs, labels, crucials, loss_reasoner, model) :
                 else:
                     # 移掉這一塊有負面影響 (loss上升了)
                     if losses_delta[t] >= levelup_threshold and blk.relevance < 2: # TODO topk
-                        _write_changes(blk, 'relevance', blk.relevance + 1) # 直接更新那個塊的relevance
+                        _write_changes(_file, blk, 'relevance', blk.relevance + 1) # 直接更新那個塊的relevance
                     # 移掉這一塊沒啥差 (或甚至loss還降了)
                     elif losses_delta[t] <= leveldown_threshold and blk.relevance > -1:
-                        _write_changes(blk, 'relevance', blk.relevance - 1)
+                        _write_changes(_file, blk, 'relevance', blk.relevance - 1)
                     t += 1
             assert t == bs
 
@@ -246,7 +246,7 @@ def train_model(
                         result = result[0] if isinstance(result, tuple) else result # loss of reasoner
                         loss = sum(result).mean()
 
-                        _intervention(bufs, labels, crucials, result, model)
+                        _intervention(_file, bufs, labels, crucials, result, model)
                         # if temp_loss is not None :
                         #     temp_loss += loss.item() # connect the Judge loss above
                         # else :
