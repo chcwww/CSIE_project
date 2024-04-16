@@ -36,6 +36,71 @@ def _write_estimation(_file, buf, relevance_blk):
 def _write_changes(_file, blk, key, value): # intervention才會用到的東西
     _file.write('{} {} {}\n'.format(blk.pos, key, value))
 
+def _intervention(bufs, labels, crucials, loss_reasoner, model) :
+    loss_reasoner = torch.FloatTensor(loss_reasoner).detach() # 這輪本來的Loss
+
+    # Paper default parameter :
+    batch_size_reason_per_gpu = 4
+    levelup_threshold = 0.2
+    leveldown_threshold = -0.05
+    
+    with torch.no_grad():
+        max_bs = batch_size_reason_per_gpu * 4
+        max_blk_num = max([len(buf) for buf in bufs]) # max blk_num in this batch
+        for i in range(len(bufs)): # num of batch
+            ids, attn_masks, type_ids, blk_pos = bufs[i].export(device=device)
+            bs = len(bufs[i]) - len(crucials[i]) # 需要處理的句數 (crucials在qa是問題那句(blk_type==0) 當然重要)
+            # Make inputs by expand with different attention masks
+            ids = ids.view(1, -1).expand(bs, -1) # 把ids複製bs份 (這樣每句可以有各自的att_mask來看情況)
+            type_ids = type_ids.view(1, -1).expand(bs, -1) # 就先當沒用吧 好像都是0 以後再看要不要當成embbeding來用
+            attn_masks = attn_masks.view(1, -1).repeat(bs, 1) # 跟expand意思應該一樣 可能在炫技
+            label = torch.FloatTensor(labels[i]).view(1, -1).expand(bs, -1) # 一樣把label expand
+            # label = [labels[i] for _ in range(bs)] # 不是阿那寫上面那個幹嘛阿 哦不是這是我寫的
+            blk_pos = torch.IntTensor(blk_pos).view(1, -1).expand(bs, -1)
+            blk_start, t = 0, 0
+            for blk in bufs[i]:
+                blk_end = blk_start + len(blk)
+                if blk not in crucials[i]:
+                    # 把要測的那句的att_mask設成0
+                    attn_masks[t, blk_start: blk_end].zero_() 
+                    t += 1
+                blk_start = blk_end
+            assert t == bs
+            # ForkedPdb().set_trace()
+            # if bs > max_bs, we cannot feed the inputs directly.
+            losses = []
+            logging.debug(f"Hello {(bs - 1) // max_bs + 1} and {bs} and {max_bs}")
+
+            for j in range((bs - 1) // max_bs + 1): 
+                l, r = max_bs * j, min(bs, max_bs * (j + 1)) # 丟一個batch的概念 這裡反正只有7個就一次丟了
+                result = model(ids[l:r], attn_masks[l:r], type_ids[l:r], labels=label[l:r], pos = blk_pos[l:r])
+                # result = result[0] if isinstance(result, tuple) else result
+                losses.append(result)
+            try :   
+                losses_delta = torch.cat(losses, dim=0) - loss_reasoner[i]
+            except RuntimeError :
+                losses_delta = [lk.detach() - loss_reasoner[i] for lk in losses[0]] # 和reasoner的差
+            # Label relevance
+            t = 0
+
+            ##################################################################
+            ##### 終於找到你啦
+            ##################################################################
+
+            for blk in bufs[i]:
+                if blk in crucials[i]:
+                    pass
+                    # self._write_changes(blk, 'relevance', 3)
+                else:
+                    # 移掉這一塊有負面影響 (loss上升了)
+                    if losses_delta[t] >= levelup_threshold and blk.relevance < 2: # TODO topk
+                        _write_changes(blk, 'relevance', blk.relevance + 1) # 直接更新那個塊的relevance
+                    # 移掉這一塊沒啥差 (或甚至loss還降了)
+                    elif losses_delta[t] <= leveldown_threshold and blk.relevance > -1:
+                        _write_changes(blk, 'relevance', blk.relevance - 1)
+                    t += 1
+            assert t == bs
+
 
 def train_model(
         models, # 之後可以考慮加入判斷是不適list的來一次練兩個 (已經改了)
@@ -166,21 +231,25 @@ def train_model(
                             _write_estimation(_file, buf, _score_blocks(buf, torch.sigmoid(logits[i]))) # 把這輪跑完的relevance更新到檔案上
                     else :
                         # Make inputs for reasoner
-                        inputs = torch.zeros(3, len(bufs), CAPACITY, dtype=torch.long, device=device)
+                        inputs = torch.zeros(3, len(bufs), CAPACITY, dtype=torch.long, device=device)  # [ 3, BATCH, 512 ]
                         # 因為tokenizer.convert_ids_to_tokens(0) = '[PAD]' 所以等於是天生PAD然後再填Buffer每個Block的ids進去 (buf.export那裡的操作)
                         blk_pos = []
                         for i, buf in enumerate(bufs):
+                            # export -> ids, att_masks, types, blk_position
                             _, _, _, b_p = buf.export(out=(inputs[0, i], inputs[1, i], inputs[2, i])) # 其實搞不太懂怎麼用export把buf的資訊給inputs的 python還能搞指標的?
-                            blk_pos.append(b_p) # 選到的(從interface那邊)每個block在相應buffer中的位置(之後損失函數那邊才可跟label比)
+                            blk_pos.append(b_p) # b_p : [ 1, NUM_OF_BLOCK ] 選到的(從interface那邊)每個block在相應buffer中的位置(之後損失函數那邊才可跟label比)
                         # Extract the labels for reasoner, e.g. start and end position for QA reasoner
+                        # crucials (list) : BATCH * [1, NUM_OF_BLOCK_blk_type==0]
                         labels, crucials = model.export_labels(bufs, device) # TODO A
                         result = model(*inputs, labels=labels, pos = blk_pos)
-                        result = result[0] if isinstance(result, tuple) else result
-                        loss = result.mean()
-                        if temp_loss is not None :
-                            temp_loss += loss.item() # connect the Judge loss above
-                        else :
-                            temp_loss = loss.item()
+                        result = result[0] if isinstance(result, tuple) else result # loss of reasoner
+                        loss = sum(result).mean()
+
+                        _intervention(bufs, labels, crucials, result, model)
+                        # if temp_loss is not None :
+                        #     temp_loss += loss.item() # connect the Judge loss above
+                        # else :
+                        #     temp_loss = loss.item()
 
                     # with torch.autocast(device.type if device.type != 'mps' else 'cpu', enabled=amp): # 混和精度
 
@@ -247,6 +316,8 @@ def train_model(
                 logging.info(f'Model {m_name} : Checkpoint {epoch} saved!')
 
             logging.info(f'Model {m_name} : epoch loss -> {epoch_loss[m_idx] / batch_steps}')
+        if epoch > 1 :
+            interface.apply_changes_from_dir(TMP_DIR)
 
             
 

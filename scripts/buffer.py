@@ -311,7 +311,8 @@ class Buffer:
                     att_masks[t:t + len(b)] = 1 # attention_mask
                     t += len(b) if length is None else length
                     get_blk_pos.append(b.place) # 放在後面避免前面error了
-        except :
+        except Exception as e:
+            print(e)
             print('There are toooooo many blocks...')
         logging.debug(f"\nHere is pos (place) : {get_blk_pos}")
         return ids, att_masks, type_ids, get_blk_pos

@@ -313,8 +313,9 @@ class ALLonBert(BertPreTrainedModel, Reasoner) :
         # labels = torch.ones([1, logits.view(-1).size(0)])
         # loss = loss_func(logits.view(-1), labels.view(-1))
             
-        loss = sum(losses) # 每一組的loss加起來
-        outputs = loss
+        # loss = sum(losses) # 每一組的loss加起來
+        # outputs = torch.FloatTensor(losses)
+        outputs = losses
         
         # loss_func = CrossEntropyLoss()
         # outputs = loss_func(torch.tensor([1., 0.]), torch.tensor([0., 0.]))

@@ -96,7 +96,7 @@ class ReasonerModule(pl.LightningModule):
         self._file.write('{} {} {}\n'.format(blk.pos, key, value))
 
     def _intervention(self, bufs, labels, crucials, loss_reasoner):
-        loss_reasoner = loss_reasoner.detach()
+        loss_reasoner = loss_reasoner.detach() # 這輪本來的Loss
         try :
             with torch.no_grad():
                 max_bs = self.config.batch_size_reason_per_gpu * 4
