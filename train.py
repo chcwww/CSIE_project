@@ -78,7 +78,8 @@ def _intervention(bufs, labels, crucials, loss_reasoner, model) :
                 losses.append(result)
             try :   
                 losses_delta = torch.cat(losses, dim=0) - loss_reasoner[i]
-            except RuntimeError :
+            except Exception as e :
+                logging.debug(e)
                 losses_delta = [lk.detach() - loss_reasoner[i] for lk in losses[0]] # 和reasoner的差
             # Label relevance
             t = 0
@@ -343,8 +344,10 @@ def get_args():
 
 if __name__ == '__main__':
     args = get_args()
-
-    logging.basicConfig(level=logging.DEBUG if args.log_level else logging.INFO, format='%(levelname)s: %(message)s')
+    log_level = logging.INFO
+    if args.log_level :
+        log_level = logging.DEBUG
+    logging.basicConfig(level=log_level, format='%(levelname)s: %(message)s')
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     logging.info(f'Using device {device}')
 
