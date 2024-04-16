@@ -149,7 +149,7 @@ class ReasonerModule(pl.LightningModule):
                             t += 1
                     assert t == bs
         except :
-            print("算了，這輪不intervertion啦")
+            logging.info("算了，這輪不intervertion啦")
 
     def training_step(self, bufs, batch_idx):
         # Make inputs for reasoner

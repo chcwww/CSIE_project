@@ -1,6 +1,7 @@
 ## other
 import argparse
 import logging # 我把它當成print的替代
+from handlers import console_handler, log_file_handler
 import os
 import random
 import sys
@@ -273,7 +274,13 @@ def get_args():
 if __name__ == '__main__':
     args = get_args()
 
-    logging.basicConfig(level=logging.DEBUG if args.log_level else logging.INFO, format='%(levelname)s: %(message)s')
+    logging.basicConfig(level=logging.DEBUG if args.log_level else logging.INFO, 
+                        format='%(levelname)s: %(message)s',
+                        style = '{',
+                        handlers = [
+                            console_handler,
+                            log_file_handler
+                        ])
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     logging.info(f'Using device {device}')
 
@@ -307,7 +314,7 @@ if __name__ == '__main__':
         torch.cuda.empty_cache()
         # models[0].use_checkpointing() # 也是他原Model有寫的東西 用來把每一層載回來
         train_model(
-            model=models,
+            models=models,
             epochs=args.epochs,
             batch_size=args.batch_size,
             learning_rate=args.lr,
