@@ -164,6 +164,7 @@ class Buffer:
                         raise ValueError('Invalid property {}'.format(p))
                 # print(cnt)
                 # print(f"here : {tmp}")
+                # def __init__(self, ids, pos, blk_type=1, choose = 0, place = -1, **kwargs):
                 ret.insert(Block(tokenizer.convert_tokens_to_ids(tmp), cnt, choose = blk_chose, place = star, **tmp_kwargs))
                 star += 1
 

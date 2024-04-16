@@ -20,7 +20,7 @@ sys.path.append(root_dir)
 
 # from scripts import buffer.Buffer, buffer.Block
 from scripts.buffer import Buffer, Block
-from utils.util import DEFAULT_MODEL_NAME
+from utils.util import DEFAULT_MODEL_NAME, DATA_NAME
 # from hotpotqa.cogqa_utils import find_start_end_after_tokenized
 
 # from sklearn.datasets import fetch_20newsgroups
@@ -187,11 +187,13 @@ def process(para, dataset_name):
 
         label_name = target_names[1]
         # 把這輪輸進來的資料轉成Buffer (cnt是裡面有幾塊)
-        # qbuf, cnt, _ = Buffer.split_document_into_blocks([tokenizer.cls_token], tokenizer, cnt=cnt, hard=False, properties=[('label_name', label_name), ('label', l[1]), ('_id', str(i)), ('blk_type', 0)])
-        dbuf, cnt, qbuf = Buffer.split_document_into_blocks(tokenizer.tokenize(d), tokenizer, cnt, hard=False, ans_pos = l[0], properties=[('label_name', label_name), ('label', l[1]), ('_id', str(i)), ('blk_type', 0)])
+        # qbuf, cnt, _ = Buffer.split_document_into_blocks([tokenizer.cls_token], tokenizer, cnt=cnt, hard=False, 
+        # properties=[('label_name', label_name), ('label', l[1]), ('_id', str(i)), ('blk_type', 0)])
+        dbuf, cnt, qbuf = Buffer.split_document_into_blocks(tokenizer.tokenize(d), tokenizer, cnt, hard=False, ans_pos = l[0], 
+                                                            properties=[('label_name', label_name), ('label', l[1]), ('_id', str(i)), ('blk_type', 1)])
         # qbuf是標籤內容 dbuf是正文
         batches.append((qbuf, dbuf))
-    with open(os.path.join(root_dir, 'data', f'20news_{dataset_name}.pkl'), 'wb') as fout: 
+    with open(os.path.join(root_dir, 'data', f'{DATA_NAME}_{dataset_name}.pkl'), 'wb') as fout: 
         pickle.dump(batches, fout) # 將batches的內容保存到fout中
     return batches
 # %%

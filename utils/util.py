@@ -1,6 +1,8 @@
 CAPACITY = 512 # Working Memory
 DEFAULT_MODEL_NAME = "luhua/chinese_pretrain_mrc_roberta_wwm_ext_large"
 MODEL_NAME = "bert-base-chinese"
+DATA_NAME = "sw_data"
+
 BLOCK_SIZE = 63 # The max length of an episode
 BLOCK_MIN = 10 # The min length of an episode
 
@@ -10,8 +12,8 @@ SAVE_DIR = Path(os.path.join(os.getcwd(), 'load_dir', 'saved_dir'))
 TMP_DIR = Path(os.path.join(os.getcwd(), 'load_dir', 'tmp_dir'))
 LOG_DIR = Path(os.path.join(os.getcwd(), 'load_dir', 'log_dir'))
 
-TRAIN_SRC = Path(os.path.join(os.getcwd(), 'data', '20news_train.pkl'))
-TEST_SRC = Path(os.path.join(os.getcwd(), 'data', '20news_test.pkl'))
+TRAIN_SRC = Path(os.path.join(os.getcwd(), 'data', f'{DATA_NAME}_train.pkl'))
+TEST_SRC = Path(os.path.join(os.getcwd(), 'data', f'{DATA_NAME}_test.pkl'))
 
 # check change
 def convert_caps(s): # 得到小寫
