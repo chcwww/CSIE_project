@@ -304,7 +304,7 @@ class ALLonBert(BertPreTrainedModel, Reasoner) :
                     if soft_max[sn] == 1 and ou != -1 :
                         pred[sn] = 1
                     if ou != -1 :
-                        lab[sn] = labels[ba][sn]
+                        lab[sn] = labels[ba][ou]
                 pred.requires_grad = True # 讓loss可以backward
                 lab.requires_grad = True # 讓loss可以backward
                 logging.debug(f"pred : {pred.view(-1)}, label : {lab.view(-1)}")
