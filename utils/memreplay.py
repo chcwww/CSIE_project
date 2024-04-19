@@ -5,10 +5,11 @@ from utils.util import CAPACITY
 from scripts.buffer import Buffer
 
 def _score_blocks(qbuf, relevance_token):
-    ends = qbuf.block_ends()
-    relevance_blk = torch.ones(len(ends), device='cpu')
+    ends = qbuf.block_ends() # 大家的結束位置
+    relevance_blk = torch.ones(len(ends), device='cpu') # 有幾句
     for i in range(len(ends)): 
-        if qbuf[i].blk_type > 0: # query是0
+        if qbuf[i].blk_type > 0: # 不是query
+            # train.py那邊是傳sigmoid(logits)進來，所以取該句之relevence預測之平均
             relevance_blk[i] = (relevance_token[ends[i-1]:ends[i]]).mean()
     return relevance_blk
 

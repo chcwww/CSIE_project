@@ -48,9 +48,11 @@ class Introspector(BertPreTrainedModel):
         outputs = logits
         if labels is not None:
             labels = labels.type_as(logits)
+            # CrossEntropy : softmax, BCE : sigmoid
             loss_fct = torch.nn.BCEWithLogitsLoss()
             # Only keep active parts of the loss
             if attention_mask is not None:
+                # 他label其實也是全局的 所以也要選出activate的
                 active_loss = attention_mask.view(-1) == 1
                 active_logits = logits.view(-1)[active_loss]
                 active_labels = labels.view(-1)[active_loss]
@@ -217,7 +219,7 @@ class ALLonBert(BertPreTrainedModel, Reasoner) :
             # print(buf[2])
             # print(buf[-1])
             # print(buf[0].label)
-            labels.append(buf[0].label)
+            labels.append(buf[0].label) # 第一塊(qbuf)身上的label
             # labels[i] = int(buf[0].label)
         return labels, [[b for b in buf if b.blk_type == 0] for buf in bufs]
 

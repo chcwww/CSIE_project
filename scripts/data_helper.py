@@ -32,7 +32,7 @@ class SimpleListDataset(Dataset):
 class BlkPosInterface:
     def __init__(self, dataset):
         assert isinstance(dataset, SimpleListDataset)
-        self.d = {}
+        self.d = {} # KEY : blkPos, VALUE : block 
         self.dataset = dataset
         for bufs in dataset:
             for buf in bufs:
@@ -60,7 +60,7 @@ class BlkPosInterface:
                 self.apply_changes_from_file(filename)
                 os.replace(filename, os.path.join(tmp_dir, 'backup_' + shortname))
 
-    def collect_estimations_from_dir(self, tmp_dir):
+    def collect_estimations_from_dir(self, tmp_dir): # 從estimation檔案把數字更新到blk身上
         ret = []
         for shortname in os.listdir(tmp_dir):
             filename = os.path.join(tmp_dir, shortname)
@@ -78,17 +78,21 @@ class BlkPosInterface:
         max_blk_num = CAPACITY // (BLOCK_SIZE + 1)
         # max_blk_num = CAPACITY // (BLOCK_MIN + 1)
         logging.info('building buffers for introspection...')
+        # 等於本來的一個buf會生出兩個人給ret
         for qbuf, dbuf in tqdm(self.dataset):
             # 1. continous 
             lb = max_blk_num - len(qbuf)
             st = random.randint(0, max(0, len(dbuf) - lb * n0))
             for i in range(n0):
                 buf = Buffer()
+                # 隨機找了一段continuos的blocks裝上去
                 buf.blocks = qbuf.blocks + dbuf.blocks[st + i * lb:st + (i+1) * lb]
                 ret.append(buf) 
             # 2. pos + neg
+            # p就是relv高的 n就是relv低的
             pbuf, nbuf = dbuf.filtered(lambda blk, idx: blk.relevance >= 1, need_residue=True)
             for i in range(n1):
+                # 盡量放pos 真的放完了再放nbuf
                 selected_pblks = random.sample(pbuf.blocks, min(lb, len(pbuf)))
                 selected_nblks = random.sample(nbuf.blocks, min(lb - len(selected_pblks), len(nbuf)))
                 buf = Buffer()

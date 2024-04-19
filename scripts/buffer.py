@@ -236,11 +236,11 @@ class Buffer:
     def filtered(self, fltr, need_residue=False): # 要的放ret，不要的放ret2
         ret, ret2 = Buffer(), Buffer()
         for i, blk in enumerate(self.blocks):
-            if fltr(blk, i):
+            if fltr(blk, i): # interface那邊定義的 relevence大於等於1再選
                 ret.blocks.append(blk)
             else:
                 ret2.blocks.append(blk)
-        if need_residue:
+        if need_residue: # 沒被選到的也回傳
             return ret, ret2
         else:
             return ret
@@ -328,7 +328,7 @@ class Buffer:
         else:
             relevance = out
         t = 0
-        for b in self.blocks:
+        for b in self.blocks: # lable是每個token都給其relevence
             w = t + (len(b) if length is None else length)
             if b.relevance >= 1:
                 relevance[t: w] = 1

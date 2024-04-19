@@ -199,7 +199,7 @@ def train_model(
             else : # Reasoner
                 if temp_loss is not None :
                     temp_loss = None
-                interface.collect_estimations_from_dir(TMP_DIR)
+                interface.collect_estimations_from_dir(TMP_DIR) # 上一輪judge跑出來的mean( sigmoid(logits) )
                 train_set = interface.build_promising_buffer(num_samples = '1,1,1,1')
                 
             train_loader = DataLoader(train_set, shuffle=True, 
@@ -224,11 +224,8 @@ def train_model(
                             buf.export_relevance(device=device, out=inputs[3, i]) # 用來設定judge的label(由relevance)
                         # Label the relevance by the current reasoner  
                         loss, logits = model(*inputs[:3], labels=inputs[3])
-                        if temp_loss is not None :
-                            logging.debug(f"\n#########\nAdd Reasoner Loss\n#########\n")
-                            t_loss = temp_loss
-                            loss += t_loss # connect the Reasoner loss below
                         for i, buf in enumerate(bufs):
+                            # _score_blocks把原本每個token各一個的分數轉為每個block(句子)一個
                             _write_estimation(_file, buf, _score_blocks(buf, torch.sigmoid(logits[i]))) # 把這輪跑完的relevance更新到檔案上
                     else :
                         # Make inputs for reasoner
@@ -246,13 +243,11 @@ def train_model(
                         result = result[0] if isinstance(result, tuple) else result # loss of reasoner
                         loss = sum(result).mean()
 
-                        _intervention(_file, bufs, labels, crucials, result, model)
-                        # if temp_loss is not None :
-                        #     temp_loss += loss.item() # connect the Judge loss above
-                        # else :
-                        #     temp_loss = loss.item()
+                        ### 感覺可以考慮做個local loss監控一下reasoner的訓練情況
+                        ### 另外有必要去檢查一下interface 總覺得常常看到整個batch都是一樣內容的情況
+                        ### 還是我錯怪interface了阿 也可能是跑intervention的時候跳的 嗎
 
-                    # with torch.autocast(device.type if device.type != 'mps' else 'cpu', enabled=amp): # 混和精度
+                        _intervention(_file, bufs, labels, crucials, result, model)
 
                     optimizer[m_idx].zero_grad(set_to_none=True)
                     loss.backward()
