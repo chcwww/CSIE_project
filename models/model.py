@@ -304,10 +304,10 @@ class ALLonBert(BertPreTrainedModel, Reasoner) :
                     if soft_max[sn] == 1 and ou != -1 :
                         pred[sn] = 1
                     if ou != -1 :
-                        lab[sn] = labels[ou]
+                        lab[sn] = labels[ba][sn]
             pred.requires_grad = True # 讓loss可以backward
             lab.requires_grad = True # 讓loss可以backward
-            logging.debug(f"pred : {pred.view(-1)}, label : {torch.tensor(labels[ba]).view(-1)}")
+            logging.debug(f"pred : {pred.view(-1)}, label : {lab.view(-1)}")
             loss = loss_func(pred.float().view(-1).to(self.device), lab.float().view(-1).to(self.device)) # 算cross entropy
             losses.append(loss)
         else :
