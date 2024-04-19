@@ -305,11 +305,11 @@ class ALLonBert(BertPreTrainedModel, Reasoner) :
                         pred[sn] = 1
                     if ou != -1 :
                         lab[sn] = labels[ba][sn]
-            pred.requires_grad = True # 讓loss可以backward
-            lab.requires_grad = True # 讓loss可以backward
-            logging.debug(f"pred : {pred.view(-1)}, label : {lab.view(-1)}")
-            loss = loss_func(pred.float().view(-1).to(self.device), lab.float().view(-1).to(self.device)) # 算cross entropy
-            losses.append(loss)
+                pred.requires_grad = True # 讓loss可以backward
+                lab.requires_grad = True # 讓loss可以backward
+                logging.debug(f"pred : {pred.view(-1)}, label : {lab.view(-1)}")
+                loss = loss_func(pred.float().view(-1).to(self.device), lab.float().view(-1).to(self.device)) # 算cross entropy
+                losses.append(loss)
         else :
             for ba, logit in enumerate(logits_list) : # 一樣每篇分開跑
                 loss_func = CrossEntropyLoss()
