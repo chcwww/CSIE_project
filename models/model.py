@@ -292,17 +292,38 @@ class ALLonBert(BertPreTrainedModel, Reasoner) :
         # return outputs
         
         losses = []
-        for ba, logit in enumerate(logits_list) : # 一樣每篇分開跑
-            loss_func = CrossEntropyLoss()
-            soft_max = torch.max(logit, dim = 1).indices # 某一個的預測結果
-            pred = torch.zeros(len(labels[ba]), device = self.device) # 先開一個跟原始文章一樣多block的全0的tensor
-            for sn, ou in enumerate(pos[ba]) :
-                if soft_max[sn] == 1 and ou != -1 : # 如果預測成1(重點block)以及這不是qbuf的[CLS]那塊
-                    pred[ou] = 1 # 相應預測之block為1
+
+        set_local = True
+        if set_local :
+            for ba, logit in enumerate(logits_list) :
+                loss_func = CrossEntropyLoss()
+                soft_max = torch.max(logit, dim = 1).indices
+                pred = torch.zeros(len(logit), device = self.device)
+                lab = torch.zeros(len(logit), device = self.device)
+                for sn, ou in enumerate(pos[ba]) :
+                    if soft_max[sn] == 1 and ou != -1 :
+                        pred[sn] = 1
+                    if ou != -1 :
+                        lab[sn] = labels[ou]
             pred.requires_grad = True # 讓loss可以backward
+            lab.requires_grad = True # 讓loss可以backward
             logging.debug(f"pred : {pred.view(-1)}, label : {torch.tensor(labels[ba]).view(-1)}")
-            loss = loss_func(pred.float().view(-1).to(self.device), torch.tensor(labels[ba]).float().view(-1).to(self.device)) # 算cross entropy
+            loss = loss_func(pred.float().view(-1).to(self.device), lab.float().view(-1).to(self.device)) # 算cross entropy
             losses.append(loss)
+        else :
+            for ba, logit in enumerate(logits_list) : # 一樣每篇分開跑
+                loss_func = CrossEntropyLoss()
+                soft_max = torch.max(logit, dim = 1).indices # 某一個的預測結果
+                pred = torch.zeros(len(labels[ba]), device = self.device) # 先開一個跟原始文章一樣多block的全0的tensor
+                for sn, ou in enumerate(pos[ba]) :
+                    if soft_max[sn] == 1 and ou != -1 : # 如果預測成1(重點block)以及這不是qbuf的[CLS]那塊
+                        pred[ou] = 1 # 相應預測之block為1
+                pred.requires_grad = True # 讓loss可以backward
+                logging.debug(f"pred : {pred.view(-1)}, label : {torch.tensor(labels[ba]).view(-1)}")
+                loss = loss_func(pred.float().view(-1).to(self.device), torch.tensor(labels[ba]).float().view(-1).to(self.device)) # 算cross entropy
+                losses.append(loss)
+            
+
         # pred = torch.zeros(len(labels), len(labels[0]), dtype=torch.long, device=self.device)
         # print(f"我是logits :\n{logits}")
         # soft_max = torch.max(logits, dim=1).indices
