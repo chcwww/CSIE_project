@@ -175,6 +175,34 @@ class Buffer:
             ret_ans = Buffer()
             ret_ans.insert(Block(tokenizer.convert_tokens_to_ids(['[CLS]']), ans_cnt, choose = 0, place = -1, **tmp_kwargs))
         return ret, cnt, ret_ans
+    
+    @staticmethod
+    def split_version2(d, tokenizer, cnt=0, label = None):
+        ret = Buffer()
+
+        ans_cnt = cnt + 1 # 這輪answer塊的全局位置
+        cnt += 1
+        star = 0 # Local位置
+
+        for tmp, blk_chose in d:
+            
+            tmp += '[SEP]' # 放棄開頭的CLS了
+            cnt += 1
+            star += 1
+            # choose : small label for blocks
+            ret.insert(Block(tokenizer(tmp, add_special_tokens=False).input_ids, 
+                             cnt, choose = blk_chose, place = star))
+            
+        tmp_kwargs = {}
+        tmp_kwargs['label_name'] = 'taken'
+        tmp_kwargs['label'] = label # big label for full para
+        tmp_kwargs['_id'] = 0
+        tmp_kwargs['blk_type'] = 1
+        ret_ans = Buffer()
+        # [CLS]的token id是101
+        ret_ans.insert(Block([101], ans_cnt, choose = 0, place = -1, **tmp_kwargs))
+        return ret, cnt, ret_ans
+
 
     def __init__(self):
         self.blocks = []
