@@ -24,8 +24,10 @@ def pdftext_to_para_v2(text_data) :
   s_q = []
   w_q = []
   count = 0
+  
+  iter_data = zip(text_data.weak_choose, text_data.strong_choose, text_data.paragraph)
 
-  for weak, strong, text in zip(text_data.weak_label, text_data.strong_label, text_data.paragraph):
+  for weak, strong, text in iter_data :
     if(len(text) > 5 and text[0:5] == "-----") : # 遇到分隔
       count += 1
       if count % 10 == 0 :
@@ -60,13 +62,14 @@ def process(para, dataset_name, label_type = 'strong'):
         dbuf, cnt, qbuf = Buffer.split_version2(d, tokenizer, cnt, label = l)
         # qbuf是標籤內容 dbuf是正文
         batches.append((qbuf, dbuf))
-    with open(os.path.join(root_dir, 'data', f'{DATA_NAME}_{dataset_name}.pkl'), 'wb') as fout: 
+    with open(os.path.join(root_dir, 'data', f'{DATA_NAME}_{label_type}_{dataset_name}.pkl'), 'wb') as fout: 
         pickle.dump(batches, fout) # 將batches的內容保存到fout中
     return batches
 
 if __name__ == "__main__" :
-  text_data = pd.read_csv(r"C:\Users\chcww\Downloads\社會期刊訓練資料集_strong_weak_thr=80percent.csv")
+  text_data = pd.read_csv(r"C:\Users\chcww\Downloads\社會期刊訓練資料集_threshold0.6.csv")
   train_data, test_data = pdftext_to_para_v2(text_data)
 
   process(train_data, 'train', 'strong')
+  process(train_data, 'train', 'weak')
   process(test_data, 'test')

@@ -12,8 +12,9 @@ SAVE_DIR = Path(os.path.join(os.getcwd(), 'load_dir', 'saved_dir'))
 TMP_DIR = Path(os.path.join(os.getcwd(), 'load_dir', 'tmp_dir'))
 LOG_DIR = Path(os.path.join(os.getcwd(), 'load_dir', 'log_dir'))
 
-TRAIN_SRC = Path(os.path.join(os.getcwd(), 'data', f'{DATA_NAME}_train.pkl'))
-TEST_SRC = Path(os.path.join(os.getcwd(), 'data', f'{DATA_NAME}_test.pkl'))
+STRONG_SRC = Path(os.path.join(os.getcwd(), 'data', f'{DATA_NAME}_strong_train.pkl'))
+WEAK_SRC = Path(os.path.join(os.getcwd(), 'data', 'weak',f'{DATA_NAME}_weak_train.pkl'))
+TEST_SRC = Path(os.path.join(os.getcwd(), 'data', f'{DATA_NAME}_strong_test.pkl'))
 
 # check change
 def convert_caps(s): # 得到小寫
