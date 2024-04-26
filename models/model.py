@@ -4,6 +4,9 @@ from transformers import AutoConfig, AutoModel, BertPreTrainedModel, RobertaConf
 from torch.nn import CrossEntropyLoss, MSELoss
 from transformers.modeling_outputs import TokenClassifierOutput
 import logging
+import os
+print(f"Dir now : {os.getcwd()}")
+from utils.util import MODEL_NAME
 
 # check branch
 class Introspector(BertPreTrainedModel):
@@ -204,6 +207,7 @@ class ALLonBert(BertPreTrainedModel, Reasoner) :
         from transformers import AutoTokenizer
         self.dropouts = torch.nn.Dropout(0.1)
         self.roberta = RobertaModel(config)
+        # self.roberta = AutoModel.from_pretrained(MODEL_NAME)
         self.tokenizer = AutoTokenizer.from_pretrained("luhua/chinese_pretrain_mrc_roberta_wwm_ext_large")
         self.classifier = torch.nn.Linear(config.hidden_size, 2)
         self.all_config = config
@@ -235,6 +239,7 @@ class ALLonBert(BertPreTrainedModel, Reasoner) :
             # position of cls token
             pos = None, # important : should modify "reasoner_module.py"
     ) :
+        # input_ids, attention_mask, token_type_ids, labels, pos = *inputs, labels, blk_pos
         outputs = self.roberta(
             input_ids,
             attention_mask = attention_mask,
@@ -244,6 +249,8 @@ class ALLonBert(BertPreTrainedModel, Reasoner) :
             inputs_embeds = inputs_embeds,
         )
         
+        # outputs[0].shape [1, 512, 768]
+        # outputs[1].shape [1, 768]
 
         logging.debug('\n')
         cls_list = []
@@ -275,7 +282,14 @@ class ALLonBert(BertPreTrainedModel, Reasoner) :
         logging.debug(cls_list)
         s_o = sequence_outputs.shape
         logits_list = []
+
+        ## DEBUG
+        # batch, length, dim = 4, 512, 768
+        # sequence_outputs = torch.randn(batch, length, dim)
+        ## DEBUG
         for nu, c_l in enumerate(cls_list) : # 為了避免每組的Block數不一樣 所以全部分開預測
+            # start = [com for com in c_l]
+            # end =
             out_tensor = sequence_outputs[nu, [com + 1 for com in c_l], :] # 拿到[CLS](或是+1就是第一個字)的BERT向量
             logits = self.classifier(out_tensor) # problem 1 , 大家長度會不一樣 但在data_helper控制block數可以mitigate這個問題
             logits_list.append(logits)
@@ -354,3 +368,116 @@ class ALLonBert(BertPreTrainedModel, Reasoner) :
         
 
 # aLLonBert.from_pretrained('roberta-base')
+# input_ids = inputs[0]
+# attention_mask = inputs[1]
+# token_type_ids = inputs[2]
+# position_ids = None
+# head_mask = None
+# inputs_embeds = None
+# labels = labels
+# pos = blk_pos 
+# roberta = AutoModel.from_pretrained(MODEL_NAME)
+# tokenizer = AutoTokenizer.from_pretrained("luhua/chinese_pretrain_mrc_roberta_wwm_ext_large")
+# classifier = torch.nn.Linear(768, 2)
+# dropouts = torch.nn.Dropout(0.1)
+
+
+class ALLonBert_v2(torch.nn.Module, Reasoner) :
+
+    def __init__(self) :
+        super(ALLonBert_v2, self).__init__()
+        bert_dim = 768
+        from transformers import AutoTokenizer
+        self.dropouts = torch.nn.Dropout(0.1)
+        self.roberta = AutoModel.from_pretrained(MODEL_NAME)
+        self.tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+        self.classifier = torch.nn.Linear(bert_dim, 2)
+
+    @classmethod
+    def export_labels(cls, bufs, device): # TODO 根據新的標籤類型來更改
+        labels = []
+        for i, buf in enumerate(bufs):
+            labels.append(buf[0].label) # 第一塊(qbuf)身上的label
+        return labels, [[b for b in buf if b.blk_type == 0] for buf in bufs]
+
+    def forward(
+            self,
+            input_ids = None,
+            attention_mask = None,
+            token_type_ids = None,
+            position_ids = None,
+            head_mask = None,
+            inputs_embeds = None,
+            labels = None,
+            # position of cls token
+            pos = None, # important : should modify "reasoner_module.py"
+            device = None,
+    ) :
+        # input_ids, attention_mask, token_type_ids, labels, pos = *inputs, labels, blk_pos
+        self.roberta = self.roberta.to(device)
+        # outputs = roberta(
+        outputs = self.roberta(
+            input_ids,
+            attention_mask = attention_mask,
+            token_type_ids = token_type_ids,
+            position_ids = position_ids,
+            head_mask = head_mask,
+            inputs_embeds = inputs_embeds,
+        )
+        
+        # outputs[0].shape [1, 512, 768]
+        # outputs[1].shape [1, 768]
+
+        sep_list = []
+        for ina in input_ids :
+            sep_tmp = []
+            text_tmp = []
+            place = 0
+            for ink in ina :
+                if int(ink.detach().cpu()) == 102 :
+                    sep_tmp.append(place)
+                place += 1
+                text_tmp.append(ink)
+            sep_list.append(sep_tmp)
+
+        sequence_outputs = outputs[0] # last_hidden_state
+
+        sequence_outputs = self.dropouts(sequence_outputs)
+        # sequence_outputs = dropouts(sequence_outputs)
+        
+        # sequence_outputs.shape [ 1 (batch size), 512 (token len limit), 768 (bert dim) ]
+        logits_list = []
+        for nu, n_list in enumerate(sep_list) : # 為了避免每組的Block數不一樣 所以全部分開預測
+            out_tensor = torch.mean(sequence_outputs[nu, 1:n_list[0], :], 0).view(1, -1)
+            for i in range(len(n_list)-1) :
+                # 整句取平均
+                temp_tensor = torch.mean(sequence_outputs[nu, n_list[i]+1:n_list[i+1], :], 0).view(1, -1)
+                out_tensor = torch.cat((out_tensor, temp_tensor), 0)
+            # out_tensor.shape [7 (num of block), 768]
+            logits = self.classifier(out_tensor)
+            # logits.shape [7 (num of block), 2]
+            logits_list.append(logits)
+
+        outputs = (logits_list, )
+        
+        if labels is not None :
+            losses = []
+            mu_label = []
+            loss_func = CrossEntropyLoss()
+            for batch_id, logit in enumerate(logits_list) :
+                soft_max = torch.max(logit, dim = 1).indices.float()
+                local_label = torch.zeros(len(logit), device = device)
+                local_pos = pos[batch_id].copy()
+                local_pos.pop(0) # 第一個是[CLS]
+                local_true = labels[batch_id].copy()
+                for local_id, blk_id in enumerate(local_pos) :
+                    if local_true[blk_id-1] == 1 :
+                        local_label[local_id] = 1
+                local_label.requires_grad = True
+                soft_max.requires_grad = True
+                # 算cross entropy
+                losses.append(loss_func(soft_max.view(-1).to(device), local_label.view(-1).to(device)))
+                mu_label.append(local_label.view(-1))
+            outputs = (losses, mu_label, ) + outputs
+        
+        return outputs
