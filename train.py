@@ -5,7 +5,7 @@ import os
 import random
 import sys
 from pathlib import Path # 會幫忙處理路徑格式
-from tqdm import tqdm
+from tqdm import tqdm, trange
 from transformers import AutoTokenizer, AutoModel
 from copy import deepcopy
 
@@ -25,7 +25,7 @@ from scripts.data_helper import SimpleListDataset, BlkPosInterface, find_lastest
 from scripts.buffer import buffer_collate
 from models.model import Introspector, ALLonBert_v2
 
-print(f"Dir now : {os.getcwd()}")
+print(f"Dir : {os.getcwd()}")
 
 dir_checkpoint = Path(SAVE_DIR)
 
@@ -350,7 +350,7 @@ def sep_train(
     # 3. Create data loaders (args)
     loader_args = dict(batch_size=batch_size, num_workers=os.cpu_count(), pin_memory=True)
 
-    train_loader = DataLoader(train_set, shuffle=True, **loader_args)
+    # train_loader = DataLoader(train_set, shuffle=True, **loader_args)
 
     logging.info(f'''Starting training:
         Epochs:          {epochs}
@@ -368,7 +368,6 @@ def sep_train(
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=5)
 
     global_step = 0
-
     # 5. Begin training
     # epoch = 1
     for epoch in range(1, epochs + 1):
@@ -385,51 +384,48 @@ def sep_train(
         batch_steps = 0
         epoch_sum = 0
         epoch_len = 0
-        with tqdm(total=n_train, desc=f'Epoch {epoch}/{epochs}', unit=' item') as pbar:
+        for bufs in (pbar:=tqdm(train_loader, desc=f'Epoch {epoch}/{epochs}', unit=' Paragraph')) : 
+            batch_steps += 1
+            # Make inputs for reasoner
+            inputs = torch.zeros(3, len(bufs), CAPACITY, dtype=torch.long, device=device)  # [ 3, BATCH, 512 ]
+            # 因為tokenizer.convert_ids_to_tokens(0) = '[PAD]' 所以等於是天生PAD然後再填Buffer每個Block的ids進去 (buf.export那裡的操作)
+            blk_pos = []
+            for i, buf in enumerate(bufs):
+                # export -> ids, att_masks, types, blk_position
+                _, _, _, b_p = buf.export(out=(inputs[0, i], inputs[1, i], inputs[2, i])) # 其實搞不太懂怎麼用export把buf的資訊給inputs的 python還能搞指標的?
+                blk_pos.append(b_p) # b_p : [ 1, NUM_OF_BLOCK ] 選到的(從interface那邊)每個block在相應buffer中的位置(之後損失函數那邊才可跟label比)
+            # Extract the labels for reasoner, e.g. start and end position for QA reasoner
+            # crucials (list) : BATCH * [1, NUM_OF_BLOCK_blk_type==0]
+            labels, crucials = model.export_labels(bufs, device) # TODO A
+            result = model(*inputs, labels=labels, pos = blk_pos, device = device)
+            
+            losses = result[0] if isinstance(result, tuple) else result
+            loss = sum(losses)/len(losses) # Mean or Sum ?
+            
+            logits = result[2]
+            local_labels = result[1]
+            softmax_preds = [F.softmax(logit, dim = 1) for logit in logits]
+            preds = [torch.max(s_pred, dim=1).indices for s_pred in softmax_preds]
+            sum_correct = sum(sum(ans) for ans in map(lambda x, y : x==y, preds, local_labels))
+            len_label = sum(len(lab) for lab in local_labels)
+            acc_batch = (sum_correct / len_label).item()
+            epoch_sum += sum_correct
+            epoch_len += len_label
+            logging.info(f'Model {m_name} : batch acc -> {acc_batch:.3f}')
 
-            for bufs in train_loader : # batch 也許可以考慮一個batch是 J -> R -> J
-                batch_steps += 1
-                # Make inputs for reasoner
-                inputs = torch.zeros(3, len(bufs), CAPACITY, dtype=torch.long, device=device)  # [ 3, BATCH, 512 ]
-                # 因為tokenizer.convert_ids_to_tokens(0) = '[PAD]' 所以等於是天生PAD然後再填Buffer每個Block的ids進去 (buf.export那裡的操作)
-                blk_pos = []
-                for i, buf in enumerate(bufs):
-                    # export -> ids, att_masks, types, blk_position
-                    _, _, _, b_p = buf.export(out=(inputs[0, i], inputs[1, i], inputs[2, i])) # 其實搞不太懂怎麼用export把buf的資訊給inputs的 python還能搞指標的?
-                    blk_pos.append(b_p) # b_p : [ 1, NUM_OF_BLOCK ] 選到的(從interface那邊)每個block在相應buffer中的位置(之後損失函數那邊才可跟label比)
-                # Extract the labels for reasoner, e.g. start and end position for QA reasoner
-                # crucials (list) : BATCH * [1, NUM_OF_BLOCK_blk_type==0]
-                labels, crucials = model.export_labels(bufs, device) # TODO A
-                result = model(*inputs, labels=labels, pos = blk_pos, device = device)
-                
-                losses = result[0] if isinstance(result, tuple) else result
-                loss = sum(losses)/len(losses) # Mean or Sum ?
-                
-                logits = result[2]
-                local_labels = result[1]
-                softmax_preds = [F.softmax(logit, dim = 1) for logit in logits]
-                preds = [torch.max(s_pred, dim=1).indices for s_pred in softmax_preds]
-                sum_correct = sum(sum(ans) for ans in map(lambda x, y : x==y, preds, local_labels))
-                len_label = sum(len(lab) for lab in local_labels)
-                acc_batch = (sum_correct / len_label).item()
-                epoch_sum += sum_correct
-                epoch_len += len_label
-                logging.info(f'Model {m_name} : batch acc -> {acc_batch:.3f}')
+            # _intervention(_file, bufs, labels, crucials, result, model)
 
-                # _intervention(_file, bufs, labels, crucials, result, model)
+            optimizer.zero_grad()
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm = 10)
+            optimizer.step()
+            scheduler.step(loss)
+            
+            logging.debug(f"Loader len : {len(train_loader)}")
 
-                optimizer.zero_grad()
-                loss.backward()
-                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm = 10)
-                optimizer.step()
-                scheduler.step(loss)
-                
-                pbar.update(len(train_loader)) # 吧?
-                logging.debug(f"Loader len : {len(train_loader)}")
-
-                global_step += 1
-                epoch_loss += loss.item()
-                pbar.set_postfix(**{'loss (batch)': loss.item()}) # 這東西顯示怪怪的
+            global_step += 1
+            epoch_loss += loss.item()
+            pbar.set_postfix(**{'loss (batch)': loss.item()}) # 這東西顯示怪怪的
         
         if save_checkpoint:
             dir_ch_this = Path(dir_checkpoint / 'checkpoint' / m_name)
@@ -484,24 +480,24 @@ if __name__ == '__main__':
         reasoner.load_state_dict(state_dict)
         logging.info(f'Model loaded from {args.load}')
 
-    try:
-        sep_train(
-            model = reasoner, # 之後可以考慮加入判斷是不是list的來一次練兩個 (已經改了)
-            m_name = 'Reasoner', # model_name
-            device = device,
-            epochs=args.epochs,
-            batch_size=args.batch_size,
-            learning_rate=args.lr,
-        )
-    except torch.cuda.OutOfMemoryError:
-        logging.error('Detected OutOfMemoryError! '
-                      '完蛋啦 爆炸了')
-        torch.cuda.empty_cache()
-        # models[0].use_checkpointing() # 也是他原Model有寫的東西 用來把每一層載回來
-        train_model(
-            models=reasoner,
-            epochs=args.epochs,
-            batch_size=args.batch_size,
-            learning_rate=args.lr,
-            device=device,
-        )
+    # try:
+    sep_train(
+        model = reasoner, # 之後可以考慮加入判斷是不是list的來一次練兩個 (已經改了)
+        m_name = 'Reasoner', # model_name
+        device = device,
+        epochs=args.epochs,
+        batch_size=args.batch_size,
+        learning_rate=args.lr,
+    )
+    # except torch.cuda.OutOfMemoryError:
+    #     logging.error('Detected OutOfMemoryError! '
+    #                   '完蛋啦 爆炸了')
+    #     torch.cuda.empty_cache()
+    #     # models[0].use_checkpointing() # 也是他原Model有寫的東西 用來把每一層載回來
+    #     train_model(
+    #         models=reasoner,
+    #         epochs=args.epochs,
+    #         batch_size=args.batch_size,
+    #         learning_rate=args.lr,
+    #         device=device,
+    #     )
