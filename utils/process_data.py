@@ -50,19 +50,25 @@ def pdftext_to_para_v2(text_data) :
   return [{'para' : paragraph, 'strong' : strong_label, 'weak' : weak_label}, 
           {'para' : test_para, 'strong' : test_label, 'weak' : None}]
 
-def process(para, dataset_name, label_type = 'strong'):
+def process(para, dataset_name, label_type = 'strong', toy_sample = 0):
     tokenizer = AutoTokenizer.from_pretrained(DEFAULT_MODEL_NAME)
     cnt, batches = 0, []
     
-    for i in trange(len(para['para'])):
-        # [ 內文([block, choose]), 標籤 ]
-        d, l = para['para'][i], para[label_type][i]  
+    trans_len = len(para['para']) if not toy_sample else 5
+    output_type = label_type if not toy_sample else label_type + '_toy'
+    
+    # Cool Walrus Operator
+    for i in (pbar := trange(trans_len, desc = dataset_name+'-'+label_type)):
+      pbar.set_postfix(**{'type' : output_type})
+      # [ 內文([block, choose]), 標籤 ]
+      d, l = para['para'][i], para[label_type][i]  
 
-        # 把這輪輸進來的資料轉成Buffer (cnt是總共有幾塊)
-        dbuf, cnt, qbuf = Buffer.split_version2(d, tokenizer, cnt, label = l)
-        # qbuf是標籤內容 dbuf是正文
-        batches.append((qbuf, dbuf))
-    with open(os.path.join(root_dir, 'data', f'{DATA_NAME}_{label_type}_{dataset_name}.pkl'), 'wb') as fout: 
+      # 把這輪輸進來的資料轉成Buffer (cnt是總共有幾塊)
+      dbuf, cnt, qbuf = Buffer.split_version2(d, tokenizer, cnt, label = l)
+      # qbuf是標籤內容 dbuf是正文
+      batches.append((qbuf, dbuf))
+    
+    with open(os.path.join(root_dir, 'data', f'{DATA_NAME}_{output_type}_{dataset_name}.pkl'), 'wb') as fout: 
         pickle.dump(batches, fout) # 將batches的內容保存到fout中
     return batches
 
@@ -72,4 +78,6 @@ if __name__ == "__main__" :
 
   process(train_data, 'train', 'strong')
   process(train_data, 'train', 'weak')
+  process(train_data, 'train', 'strong', toy_sample = 1)
+  process(train_data, 'train', 'weak', toy_sample = 1)
   process(test_data, 'test')
