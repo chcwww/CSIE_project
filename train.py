@@ -339,8 +339,8 @@ def sep_train(
 ):
     # 1 Create dataset
     os.makedirs(TMP_DIR, exist_ok=True)
-    sw_dataset = SimpleListDataset(USE_PATH.strong.toy)
-    # sw_dataset = SimpleListDataset(USE_PATH.strong.train)
+    # sw_dataset = SimpleListDataset(USE_PATH.strong.toy)
+    sw_dataset = SimpleListDataset(USE_PATH.strong.train)
 
     # 2.b Create interface
     train_set = sw_dataset
