@@ -5,7 +5,7 @@ from torch.nn import CrossEntropyLoss, MSELoss
 from transformers.modeling_outputs import TokenClassifierOutput
 import logging
 import os
-print(f"Dir now : {os.getcwd()}")
+# print(f"Dir now : {os.getcwd()}")
 # from utils.util import MODEL_NAME
 
 # check branch
@@ -391,7 +391,6 @@ class ALLonBert_v2(torch.nn.Module, Reasoner) :
         self.roberta = AutoModel.from_pretrained(m_name)
         self.tokenizer = AutoTokenizer.from_pretrained(m_name)
         self.classifier = torch.nn.Linear(bert_dim, 2)
-        print('This is new new new implementation.')
 
     @classmethod
     def export_labels(cls, bufs, device): # TODO 根據新的標籤類型來更改
