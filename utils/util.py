@@ -12,9 +12,53 @@ SAVE_DIR = Path(os.path.join(os.getcwd(), 'load_dir', 'saved_dir'))
 TMP_DIR = Path(os.path.join(os.getcwd(), 'load_dir', 'tmp_dir'))
 LOG_DIR = Path(os.path.join(os.getcwd(), 'load_dir', 'log_dir'))
 
-STRONG_SRC = Path(os.path.join(os.getcwd(), 'data', f'{DATA_NAME}_strong_train.pkl'))
-WEAK_SRC = Path(os.path.join(os.getcwd(), 'data', 'weak',f'{DATA_NAME}_weak_train.pkl'))
-TEST_SRC = Path(os.path.join(os.getcwd(), 'data', f'{DATA_NAME}_strong_test.pkl'))
+# Ref : LibMultiLabel "https://github.com/ASUS-AICS/LibMultiLabel.git"
+class AttributeDict(dict):
+    """AttributeDict is an extended dict that can access
+    stored items as attributes.
+
+    >>> ad = AttributeDict({'ans': 42})
+    >>> ad.ans
+    >>> 42
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        object.__setattr__(self, "_used", set())
+
+    def __getattr__(self, key: str) -> any:
+        try:
+            value = self[key]
+            self._used.add(key)
+            return value
+        except KeyError:
+            raise AttributeError(f'Missing attribute "{key}"')
+
+    def __setattr__(self, key: str, value: any) -> None:
+        self[key] = value
+        self._used.discard(key)
+
+    def used_items(self) -> dict:
+        """Returns the items that have been used at least once after being set.
+
+        Returns:
+            dict: the used items.
+        """
+        return {k: self[k] for k in self._used}
+
+# Can chain call
+USE_PATH = AttributeDict({
+    'strong' : AttributeDict({
+        'train' : Path(os.path.join(os.getcwd(), 'data', f'{DATA_NAME}_strong_train.pkl')),
+        'test' : Path(os.path.join(os.getcwd(), 'data', f'{DATA_NAME}_strong_test.pkl')),
+        'toy' : Path(os.path.join(os.getcwd(), 'data', f'{DATA_NAME}_strong_toy_train.pkl'))
+    }),
+    'weak' : AttributeDict({
+        'train' : Path(os.path.join(os.getcwd(), 'data', 'weak',f'{DATA_NAME}_weak_train.pkl')),
+        'toy' : Path(os.path.join(os.getcwd(), 'data', 'weak',f'{DATA_NAME}_weak_toy_train.pkl'))       
+    })
+})
+
 
 # check change
 def convert_caps(s): # 得到小寫
