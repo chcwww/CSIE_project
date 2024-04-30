@@ -6,7 +6,7 @@ from transformers.modeling_outputs import TokenClassifierOutput
 import logging
 import os
 print(f"Dir now : {os.getcwd()}")
-from utils.util import MODEL_NAME
+# from utils.util import MODEL_NAME
 
 # check branch
 class Introspector(BertPreTrainedModel):
@@ -366,8 +366,7 @@ class ALLonBert(BertPreTrainedModel, Reasoner) :
         #     attentions = outputs.attentions
         #     )
         
-
-# aLLonBert.from_pretrained('roberta-base')
+# m_name = "bert-base-chinese"
 # input_ids = inputs[0]
 # attention_mask = inputs[1]
 # token_type_ids = inputs[2]
@@ -384,14 +383,15 @@ class ALLonBert(BertPreTrainedModel, Reasoner) :
 
 class ALLonBert_v2(torch.nn.Module, Reasoner) :
 
-    def __init__(self) :
+    def __init__(self, m_name) :
         super(ALLonBert_v2, self).__init__()
         bert_dim = 768
         from transformers import AutoTokenizer
         self.dropouts = torch.nn.Dropout(0.1)
-        self.roberta = AutoModel.from_pretrained(MODEL_NAME)
-        self.tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+        self.roberta = AutoModel.from_pretrained(m_name)
+        self.tokenizer = AutoTokenizer.from_pretrained(m_name)
         self.classifier = torch.nn.Linear(bert_dim, 2)
+        print('This is new new new implementation.')
 
     @classmethod
     def export_labels(cls, bufs, device): # TODO 根據新的標籤類型來更改
@@ -465,7 +465,8 @@ class ALLonBert_v2(torch.nn.Module, Reasoner) :
             mu_label = []
             loss_func = CrossEntropyLoss()
             for batch_id, logit in enumerate(logits_list) :
-                soft_max = torch.max(logit, dim = 1).indices.float()
+                # 原來之前是這裡寫錯
+                soft_max = F.softmax(logit, dim = 1) # F.log_softmax
                 local_label = torch.zeros(len(logit), device = device)
                 local_pos = pos[batch_id].copy()
                 local_pos.pop(0) # 第一個是[CLS]
@@ -473,11 +474,9 @@ class ALLonBert_v2(torch.nn.Module, Reasoner) :
                 for local_id, blk_id in enumerate(local_pos) :
                     if local_true[blk_id-1] == 1 :
                         local_label[local_id] = 1
-                local_label.requires_grad = True
-                soft_max.requires_grad = True
+                local_label = local_label.long()
                 # 算cross entropy
-                losses.append(loss_func(soft_max.view(-1).to(device), local_label.view(-1).to(device)))
+                losses.append(loss_func(soft_max, local_label.view(-1).to(device)))
                 mu_label.append(local_label.view(-1))
             outputs = (losses, mu_label, ) + outputs
-        
         return outputs
