@@ -316,25 +316,25 @@ def train_model(
         if epoch > 1 :
             interface.apply_changes_from_dir(TMP_DIR)
 
-from importlib import reload
-import models.model as mod
-# from utils.util import SAVE_DIR, TMP_DIR, LOG_DIR, USE_PATH, CAPACITY, MODEL_NAME, BIG_MODEL_NAME
-import utils.util as utl
-# from scripts.data_helper import SimpleListDataset, BlkPosInterface
-import scripts.data_helper as hep
-reload(mod) # 終於找到了
-reload(utl) 
-reload(hep)
-BlkPosInterface = hep.BlkPosInterface
-USE_PATH = utl.USE_PATH
-model = mod.Introspector(MODEL_NAME) # 之後可以考慮加入判斷是不是list的來一次練兩個 (已經改了)
-m_name = 'Judge' # model_name
-device = 'cpu'
-epochs: int = 5
-batch_size: int = 3
-learning_rate: float = 1e-5
-val_percent: float = 0.1
-save_checkpoint: bool = True
+# from importlib import reload
+# import models.model as mod
+# # from utils.util import SAVE_DIR, TMP_DIR, LOG_DIR, USE_PATH, CAPACITY, MODEL_NAME, BIG_MODEL_NAME
+# import utils.util as utl
+# # from scripts.data_helper import SimpleListDataset, BlkPosInterface
+# import scripts.data_helper as hep
+# reload(mod) # 終於找到了
+# reload(utl) 
+# reload(hep)
+# BlkPosInterface = hep.BlkPosInterface
+# USE_PATH = utl.USE_PATH
+# model = mod.Introspector(MODEL_NAME) # 之後可以考慮加入判斷是不是list的來一次練兩個 (已經改了)
+# m_name = 'Judge' # model_name
+# device = 'cpu'
+# epochs: int = 5
+# batch_size: int = 3
+# learning_rate: float = 1e-5
+# val_percent: float = 0.1
+# save_checkpoint: bool = True
 
 
 def sep_train_weak(
