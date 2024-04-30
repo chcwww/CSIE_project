@@ -383,7 +383,6 @@ def sep_train_weak(
     # scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=5)
 
     global_step = 0
-    epoch_loss = 0
     # 5. Begin training
     # epoch = 1
     for epoch in range(1, epochs + 1):
@@ -397,6 +396,8 @@ def sep_train_weak(
 
         model.train()
         _file = open(Path(os.path.join(TMP_DIR, 'estimations_{}.txt'.format(device))), 'w')
+        batch_steps = 0
+        epoch_loss = 0
         for bufs in (pbar:=tqdm(train_loader, desc=f'Epoch {epoch}/{epochs}', unit=f'Paragraph({batch_size})')) : 
             batch_steps += 1
             # Make inputs for reasoner
