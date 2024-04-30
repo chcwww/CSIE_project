@@ -396,7 +396,7 @@ def sep_train_weak(
                                     )
 
         model.train()
-        _file = open(Path(os.path.join(TMP_DIR, 'estimations_{}.txt'.format(device))))
+        _file = open(Path(os.path.join(TMP_DIR, 'estimations_{}.txt'.format(device))), 'w')
         for bufs in (pbar:=tqdm(train_loader, desc=f'Epoch {epoch}/{epochs}', unit=f'Paragraph({batch_size})')) : 
             batch_steps += 1
             # Make inputs for reasoner
