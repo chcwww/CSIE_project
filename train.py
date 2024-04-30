@@ -343,10 +343,11 @@ def sep_train(
     sw_dataset = SimpleListDataset(USE_PATH.strong.train)
 
     # 2.b Create interface
-    train_set = sw_dataset
-    n_train = len(train_set)
-    n_val = 0
+    n_val = int((len(sw_dataset))*val_percent)
+    n_train = len(sw_dataset) - n_val
+    train_set, val_set = torch.utils.data.random_split(sw_dataset, [n_train, n_val])
     interface = BlkPosInterface(train_set)
+    interface_val = BlkPosInterface(val_set)
 
     ## Original module part
     # 3. Create data loaders (args)
@@ -365,7 +366,7 @@ def sep_train(
     ''')
 
     # 4. Set up the optimizer, the loss and the learning rate scheduler
-
+    DO_VALID = True
     optimizer = optim.AdamW(model.parameters(), lr = learning_rate)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=5)
 
@@ -389,7 +390,7 @@ def sep_train(
         epoch_tp = 0
         epoch_fn = 0
         epoch_fp = 0
-        for bufs in (pbar:=tqdm(train_loader, desc=f'Epoch {epoch}/{epochs}', unit=' Paragraph')) : 
+        for bufs in (pbar:=tqdm(train_loader, desc=f'Epoch {epoch}/{epochs}', unit=f'Paragraph({batch_size})')) : 
             batch_steps += 1
             # Make inputs for reasoner
             inputs = torch.zeros(3, len(bufs), CAPACITY, dtype=torch.long, device=device)  # [ 3, BATCH, 512 ]
@@ -449,6 +450,71 @@ def sep_train(
             # 'f1 (batch)': 2*batch_tp / (2*batch_tp + batch_fn + batch_fp),
             # 'recall (batch)': batch_tp / (batch_tp + batch_fn),
             # 'precision (batch)': batch_tp / (batch_tp + batch_fp),
+        if DO_VALID :
+            val_set = interface_val.build_strong_buffer()
+            val_loader = DataLoader(val_set, collate_fn=buffer_collate, **loader_args)
+            model.eval()
+            vepoch_loss = 0
+            vbatch_steps = 0
+            vepoch_sum = 0
+            vepoch_len = 0
+            vepoch_tp = 0
+            vepoch_fn = 0
+            vepoch_fp = 0
+            with torch.no_grad() :
+                for bufs in (pbar:=tqdm(val_loader, desc='Validation', unit=f'Paragraph({batch_size})')) : 
+                    vbatch_steps += 1
+                    # Make inputs for reasoner
+                    inputs = torch.zeros(3, len(bufs), CAPACITY, dtype=torch.long, device=device)  # [ 3, BATCH, 512 ]
+                    # 因為tokenizer.convert_ids_to_tokens(0) = '[PAD]' 所以等於是天生PAD然後再填Buffer每個Block的ids進去 (buf.export那裡的操作)
+                    blk_pos = []
+                    for i, buf in enumerate(bufs):
+                        # export -> ids, att_masks, types, blk_position
+                        _, _, _, b_p = buf.export(out=(inputs[0, i], inputs[1, i], inputs[2, i])) # 其實搞不太懂怎麼用export把buf的資訊給inputs的 python還能搞指標的?
+                        blk_pos.append(b_p) # b_p : [ 1, NUM_OF_BLOCK ] 選到的(從interface那邊)每個block在相應buffer中的位置(之後損失函數那邊才可跟label比)
+                    # Extract the labels for reasoner, e.g. start and end position for QA reasoner
+                    # crucials (list) : BATCH * [1, NUM_OF_BLOCK_blk_type==0]
+                    labels, crucials = model.export_labels(bufs, device) # TODO A
+                    result = model(*inputs, labels=labels, pos = blk_pos, device = device)
+                    
+                    losses = result[0] if isinstance(result, tuple) else result
+                    loss = sum(losses)/len(losses) # Mean or Sum ?
+                    
+                    logits = result[2]
+                    local_labels = result[1]
+                    softmax_preds = [F.softmax(logit, dim = 1) for logit in logits]
+                    preds = [torch.max(s_pred, dim=1).indices for s_pred in softmax_preds]
+                    # sum_correct = sum(sum(ans) for ans in map(lambda x, y : x==y, preds, local_labels))
+                    # len_label = sum(len(lab) for lab in local_labels)
+                    
+                    preds_list = np.array(sum([pred.tolist() for pred in preds], []))
+                    labels_list = np.array(sum([lab.tolist() for lab in local_labels], []))
+                    # sum_correct = sum(map(lambda x, y : x==y, preds_list, labels_list))
+                    sum_correct = (preds_list == labels_list).sum()
+                    len_label = len(labels_list)
+                    
+                    acc_batch = (sum_correct / len_label).item()
+                    vepoch_sum += sum_correct
+                    vepoch_len += len_label
+                    
+                    vbatch_tp = np.logical_and(labels_list == 1, preds_list == 1).sum(axis=0)
+                    vbatch_fn = np.logical_and(labels_list == 1, preds_list == 0).sum(axis=0)
+                    vbatch_fp = np.logical_and(labels_list == 0, preds_list == 1).sum(axis=0)            
+                    vepoch_tp += vbatch_tp
+                    vepoch_fn += vbatch_fn
+                    vepoch_fp += vbatch_fp
+                    
+                    vepoch_loss += loss.item()
+                    global_step += 1
+            logging.info(f"""
+            Model {m_name} (validation) : 
+                loss      ->  {vepoch_loss / vbatch_steps:.4f} 
+                accuracy  ->  {(vepoch_sum/vepoch_len).item():.4f}
+                precision ->  {vepoch_tp / (vepoch_tp + vepoch_fp):.4f}
+                recall    ->  {vepoch_tp / (vepoch_tp + vepoch_fn):.4f}
+                f1-score  ->  {2*vepoch_tp / (2*vepoch_tp + vepoch_fn + vepoch_fp):.4f}
+                    """)
+
         if save_checkpoint:
             dir_ch_this = Path(dir_checkpoint / 'checkpoint' / m_name)
             Path(dir_ch_this).mkdir(parents=True, exist_ok=True)

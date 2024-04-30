@@ -30,7 +30,7 @@ class SimpleListDataset(Dataset):
 
 class BlkPosInterface:
     def __init__(self, dataset):
-        assert isinstance(dataset, SimpleListDataset)
+        # assert isinstance(dataset, SimpleListDataset)
         self.d = {} # KEY : blkPos, VALUE : block 
         self.dataset = dataset
         for bufs in dataset:
