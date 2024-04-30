@@ -1,6 +1,6 @@
 import torch
 import torch.nn.functional as F
-from transformers import AutoConfig, AutoModel, BertPreTrainedModel, RobertaConfig, RobertaModel, RobertaForSequenceClassification
+from transformers import AutoConfig, AutoTokenizer, AutoModel, BertPreTrainedModel, RobertaConfig, RobertaModel, RobertaForSequenceClassification
 from torch.nn import CrossEntropyLoss, MSELoss
 from transformers.modeling_outputs import TokenClassifierOutput
 import logging
@@ -385,10 +385,9 @@ class ALLonBert_v2(torch.nn.Module, Reasoner) :
 
     def __init__(self, m_name) :
         super(ALLonBert_v2, self).__init__()
-        bert_dim = 768
-        from transformers import AutoTokenizer
         self.dropouts = torch.nn.Dropout(0.1)
         self.roberta = AutoModel.from_pretrained(m_name)
+        bert_dim = self.roberta.config.hidden_size
         self.tokenizer = AutoTokenizer.from_pretrained(m_name)
         self.classifier = torch.nn.Linear(bert_dim, 2)
 
