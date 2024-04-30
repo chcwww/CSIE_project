@@ -367,7 +367,7 @@ def sep_train(
     # 4. Set up the optimizer, the loss and the learning rate scheduler
 
     optimizer = optim.AdamW(model.parameters(), lr = learning_rate)
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=5)
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=5)
 
     global_step = 0
     # 5. Begin training
@@ -438,7 +438,7 @@ def sep_train(
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm = 10)
             optimizer.step()
-            scheduler.step(loss)
+            scheduler.step(acc_batch)
 
             global_step += 1
             epoch_loss += loss.item()
