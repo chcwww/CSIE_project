@@ -456,12 +456,13 @@ def sep_train(
             torch.save(state_dict, str(dir_ch_this / 'checkpoint_epoch{}_{}.pth'.format(epoch, m_name)))
             logging.info(f'Model {m_name} : Checkpoint {epoch} saved!')
 
-        logging.info(f"""Model {m_name} : 
-                    loss (epoch) -> {epoch_loss / batch_steps} 
-                    accuracy (epoch) -> {(epoch_sum/epoch_len).item()}
-                    precision (epoch) -> {epoch_tp / (epoch_tp + epoch_fp)}
-                    recall (epoch) -> {epoch_tp / (epoch_tp + epoch_fn)}
-                    f1-score (epoch) -> {2*epoch_tp / (2*epoch_tp + epoch_fn + epoch_fp)}
+        logging.info(f"""
+            Model {m_name} : 
+                loss (epoch)      ->  {epoch_loss / batch_steps:.4f} 
+                accuracy (epoch)  ->  {(epoch_sum/epoch_len).item():.4f}
+                precision (epoch) ->  {epoch_tp / (epoch_tp + epoch_fp):.4f}
+                recall (epoch)    ->  {epoch_tp / (epoch_tp + epoch_fn):.4f}
+                f1-score (epoch)  ->  {2*epoch_tp / (2*epoch_tp + epoch_fn + epoch_fp):.4f}
                     """)
             
 
