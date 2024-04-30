@@ -444,12 +444,11 @@ def sep_train(
             epoch_loss += loss.item()
             pbar.set_postfix(**{
                 'acc (batch)': acc_batch,
-                'f1 (batch)': 2*batch_tp / (2*batch_tp + batch_fn + batch_fp),
-                'recall (batch)': batch_tp / (batch_tp + batch_fn),
-                'precision (batch)': batch_tp / (batch_tp + batch_fp),
                 'loss (batch)': loss.item()
                 })
-        
+            # 'f1 (batch)': 2*batch_tp / (2*batch_tp + batch_fn + batch_fp),
+            # 'recall (batch)': batch_tp / (batch_tp + batch_fn),
+            # 'precision (batch)': batch_tp / (batch_tp + batch_fp),
         if save_checkpoint:
             dir_ch_this = Path(dir_checkpoint / 'checkpoint' / m_name)
             Path(dir_ch_this).mkdir(parents=True, exist_ok=True)
