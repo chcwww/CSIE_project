@@ -19,7 +19,7 @@ from torch import optim
 from torch.utils.data import DataLoader, random_split
 
 ## project
-from utils.util import SAVE_DIR, TMP_DIR, LOG_DIR, USE_PATH, CAPACITY, MODEL_NAME
+from utils.util import SAVE_DIR, TMP_DIR, LOG_DIR, USE_PATH, CAPACITY, MODEL_NAME, BIG_MODEL_NAME
 from utils.memreplay import mem_replay, _score_blocks
 from scripts.data_helper import SimpleListDataset, BlkPosInterface, find_lastest_checkpoint
 from scripts.buffer import buffer_collate
@@ -411,7 +411,7 @@ def sep_train(
             acc_batch = (sum_correct / len_label).item()
             epoch_sum += sum_correct
             epoch_len += len_label
-            logging.info(f'Model {m_name} : batch acc -> {acc_batch:.3f}')
+            # logging.info(f'Model {m_name} : batch acc -> {acc_batch:.3f}')
 
             # _intervention(_file, bufs, labels, crucials, result, model)
 
@@ -420,12 +420,13 @@ def sep_train(
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm = 10)
             optimizer.step()
             scheduler.step(loss)
-            
-            logging.debug(f"Loader len : {len(train_loader)}")
 
             global_step += 1
             epoch_loss += loss.item()
-            pbar.set_postfix(**{'loss (batch)': loss.item()}) # 這東西顯示怪怪的
+            pbar.set_postfix(**{
+                'loss (batch)': loss.item(),
+                'acc  (batch)': acc_batch,
+                })
         
         if save_checkpoint:
             dir_ch_this = Path(dir_checkpoint / 'checkpoint' / m_name)
@@ -452,7 +453,8 @@ def get_args():
     # parser.add_argument('--bilinear', action='store_true', default=False, help='Use bilinear upsampling')
     parser.add_argument('--classes', '-c', type=int, default=2, help='Number of classes')
     parser.add_argument('--log-level', '-g', type=bool, default=False, help='')
-    parser.add_argument('--model-name', '-m', type=str, default=None, help='Specifiy the name of BERT pre-trained model')
+    parser.add_argument('--model-name', '-m', type=str, default=None,
+                        choices = ['default', 'large'], help='Specifiy the name of BERT pre-trained model')
 
     return parser.parse_args()
 
@@ -467,8 +469,8 @@ if __name__ == '__main__':
     logging.info(f'Using device {device}')
 
     # Set Model and Tokenizer
-    if args.model_name is not None :
-        MODEL_NAME = args.model_name
+    if args.model_name is not None and args.model_name == 'large' :
+        MODEL_NAME = BIG_MODEL_NAME # 有指定的話就給個新的
         
     reasoner = ALLonBert_v2(MODEL_NAME).to(device)
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
