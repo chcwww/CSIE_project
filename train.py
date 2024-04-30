@@ -680,7 +680,7 @@ if __name__ == '__main__':
         MODEL_NAME = BIG_MODEL_NAME # 有指定的話就給個新的
         
     reasoner = ALLonBert_v2(MODEL_NAME).to(device)
-    reasoner = Introspector(MODEL_NAME).to(device)
+    judger = Introspector(MODEL_NAME).to(device)
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
     
     # logging.debug(f'Network:\n\t## Judge:\n\t\t{models[0]}\n\n\t## Reasoner:\n\t\t{models[1]}')
@@ -692,7 +692,7 @@ if __name__ == '__main__':
 
     # try:
     sep_train_weak(
-        model = reasoner, # 之後可以考慮加入判斷是不是list的來一次練兩個 (已經改了)
+        model = judger, # 之後可以考慮加入判斷是不是list的來一次練兩個 (已經改了)
         m_name = 'Judge', # model_name
         device = device,
         epochs=args.epochs,
