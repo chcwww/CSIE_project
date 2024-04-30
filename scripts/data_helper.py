@@ -1,4 +1,3 @@
-
 import pickle
 import os
 import re
@@ -129,6 +128,31 @@ class BlkPosInterface:
                 buf = Buffer()
                 buf.blocks = qbuf.blocks + pbuf.blocks + random.sample(nbuf.blocks, min(len(nbuf), lb))
                 ret.append(buf.sort_())
+        return SimpleListDataset(ret)
+    
+    def build_strong_buffer(self) :
+        ret = []
+    
+        logging.info('building strong label buffers for reasoning...')
+        for qbuf, dbuf in tqdm(self.dataset):
+        # for qbuf, dbuf in tqdm(sw_dataset):
+            pbuf, nbuf = dbuf.filtered(lambda blk, idx: blk.choose == 1, need_residue=True)
+            local_len = 1 # CLS先佔了一個
+            buf = Buffer()
+            buf.blocks = qbuf.blocks
+            blk_pos = []
+            for b in pbuf.blocks :
+                if local_len + len(b) < 512 :
+                    buf.blocks = buf.blocks + [b]
+                    blk_pos.append(b.pos)
+                    local_len += len(b)
+            for b in nbuf.blocks :
+                # 已選的前後句
+                if local_len + len(b) < 512 and ((b.pos + 1) in blk_pos or (b.pos - 1) in blk_pos) :
+                    buf.blocks += [b]
+                    local_len += len(b)
+            ret.append(buf.sort_())
+            
         return SimpleListDataset(ret)
 
 def find_lastest_checkpoint(checkpoints_dir, epoch=False):
