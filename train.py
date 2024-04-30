@@ -19,11 +19,11 @@ from torch import optim
 from torch.utils.data import DataLoader, random_split
 
 ## project
-from utils.util import SAVE_DIR, TMP_DIR, LOG_DIR, TRAIN_SRC, TEST_SRC, CAPACITY, MODEL_NAME
+from utils.util import SAVE_DIR, TMP_DIR, LOG_DIR, USE_PATH, CAPACITY, MODEL_NAME
 from utils.memreplay import mem_replay, _score_blocks
 from scripts.data_helper import SimpleListDataset, BlkPosInterface, find_lastest_checkpoint
 from scripts.buffer import buffer_collate
-from models.model import Introspector, ALLonBert
+from models.model import Introspector, ALLonBert_v2
 
 print(f"Dir now : {os.getcwd()}")
 
@@ -104,7 +104,7 @@ def _intervention(_file, bufs, labels, crucials, loss_reasoner, model) :
 
 
 def train_model(
-        models, # 之後可以考慮加入判斷是不適list的來一次練兩個 (已經改了)
+        models, # 之後可以考慮加入判斷是不是list的來一次練兩個 (已經改了)
         device,
         epochs: int = 5,
         batch_size: int = 1,
@@ -315,6 +315,130 @@ def train_model(
         if epoch > 1 :
             interface.apply_changes_from_dir(TMP_DIR)
 
+# from importlib import reload
+# import models.model as mod
+# reload(mod) # 終於找到了
+# model = mod.ALLonBert_v2(MODEL_NAME) # 之後可以考慮加入判斷是不是list的來一次練兩個 (已經改了)
+# m_name = 'Reasoner' # model_name
+# device = 'cpu'
+# epochs: int = 5
+# batch_size: int = 3
+# learning_rate: float = 1e-5
+# val_percent: float = 0.1
+# save_checkpoint: bool = True
+def sep_train(
+        model = ALLonBert_v2(MODEL_NAME), # 之後可以考慮加入判斷是不是list的來一次練兩個 (已經改了)
+        m_name = 'Reasoner', # model_name
+        device = 'cpu',
+        epochs: int = 5,
+        batch_size: int = 4,
+        learning_rate: float = 1e-5,
+        val_percent: float = 0.1,
+        save_checkpoint: bool = True,
+):
+    # 1 Create dataset
+    os.makedirs(TMP_DIR, exist_ok=True)
+    sw_dataset = SimpleListDataset(USE_PATH.strong.train)
+
+    # 2.b Create interface
+    train_set = sw_dataset
+    n_train = len(train_set)
+    n_val = 0
+    interface = BlkPosInterface(train_set)
+
+    ## Original module part
+    # 3. Create data loaders (args)
+    loader_args = dict(batch_size=batch_size, num_workers=os.cpu_count(), pin_memory=True)
+
+    train_loader = DataLoader(train_set, shuffle=True, **loader_args)
+
+    logging.info(f'''Starting training:
+        Epochs:          {epochs}
+        Batch size:      {batch_size}
+        Learning rate:   {learning_rate}
+        Training size:   {n_train}
+        Validation size: {n_val}
+        Checkpoints:     {save_checkpoint}
+        Device:          {device.type}
+    ''')
+
+    # 4. Set up the optimizer, the loss and the learning rate scheduler
+
+    optimizer = optim.AdamW(model.parameters(), lr = learning_rate)
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=5)
+
+    global_step = 0
+
+    # 5. Begin training
+    # epoch = 1
+    for epoch in range(1, epochs + 1):
+        # Update interface
+        train_set = interface.build_strong_buffer()
+            
+        train_loader = DataLoader(train_set, shuffle=True, 
+                                    collate_fn = buffer_collate, # 讓dataloader可以迭代buffer類
+                                    **loader_args
+                                    )
+
+        model.train()
+        epoch_loss = 0
+        batch_steps = 0
+        epoch_sum = 0
+        epoch_len = 0
+        with tqdm(total=n_train, desc=f'Epoch {epoch}/{epochs}', unit=' item') as pbar:
+
+            for bufs in train_loader : # batch 也許可以考慮一個batch是 J -> R -> J
+                batch_steps += 1
+                # Make inputs for reasoner
+                inputs = torch.zeros(3, len(bufs), CAPACITY, dtype=torch.long, device=device)  # [ 3, BATCH, 512 ]
+                # 因為tokenizer.convert_ids_to_tokens(0) = '[PAD]' 所以等於是天生PAD然後再填Buffer每個Block的ids進去 (buf.export那裡的操作)
+                blk_pos = []
+                for i, buf in enumerate(bufs):
+                    # export -> ids, att_masks, types, blk_position
+                    _, _, _, b_p = buf.export(out=(inputs[0, i], inputs[1, i], inputs[2, i])) # 其實搞不太懂怎麼用export把buf的資訊給inputs的 python還能搞指標的?
+                    blk_pos.append(b_p) # b_p : [ 1, NUM_OF_BLOCK ] 選到的(從interface那邊)每個block在相應buffer中的位置(之後損失函數那邊才可跟label比)
+                # Extract the labels for reasoner, e.g. start and end position for QA reasoner
+                # crucials (list) : BATCH * [1, NUM_OF_BLOCK_blk_type==0]
+                labels, crucials = model.export_labels(bufs, device) # TODO A
+                result = model(*inputs, labels=labels, pos = blk_pos, device = device)
+                
+                losses = result[0] if isinstance(result, tuple) else result
+                loss = sum(losses)/len(losses) # Mean or Sum ?
+                
+                logits = result[2]
+                local_labels = result[1]
+                softmax_preds = [F.softmax(logit, dim = 1) for logit in logits]
+                preds = [torch.max(s_pred, dim=1).indices for s_pred in softmax_preds]
+                sum_correct = sum(sum(ans) for ans in map(lambda x, y : x==y, preds, local_labels))
+                len_label = sum(len(lab) for lab in local_labels)
+                acc_batch = (sum_correct / len_label).item()
+                epoch_sum += sum_correct
+                epoch_len += len_label
+                logging.info(f'Model {m_name} : batch acc -> {acc_batch:.3f}')
+
+                # _intervention(_file, bufs, labels, crucials, result, model)
+
+                optimizer.zero_grad()
+                loss.backward()
+                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm = 10)
+                optimizer.step()
+                scheduler.step(loss)
+                
+                pbar.update(len(train_loader)) # 吧?
+                logging.debug(f"Loader len : {len(train_loader)}")
+
+                global_step += 1
+                epoch_loss += loss.item()
+                pbar.set_postfix(**{'loss (batch)': loss.item()}) # 這東西顯示怪怪的
+        
+        if save_checkpoint:
+            dir_ch_this = Path(dir_checkpoint / 'checkpoint' / m_name)
+            Path(dir_ch_this).mkdir(parents=True, exist_ok=True)
+            state_dict = model.state_dict()
+            torch.save(state_dict, str(dir_ch_this / 'checkpoint_epoch{}_{}.pth'.format(epoch, m_name)))
+            logging.info(f'Model {m_name} : Checkpoint {epoch} saved!')
+
+        logging.info(f'Model {m_name} : epoch loss -> {epoch_loss / batch_steps} | epoch acc -> {(epoch_sum/epoch_len).item()}')
             
 
 
@@ -336,7 +460,7 @@ def get_args():
 
     return parser.parse_args()
 
-
+    
 if __name__ == '__main__':
     args = get_args()
     log_level = logging.INFO
@@ -349,26 +473,25 @@ if __name__ == '__main__':
     # Set Model and Tokenizer
     if args.model_name is not None :
         MODEL_NAME = args.model_name
+        
+    reasoner = ALLonBert_v2(MODEL_NAME).to(device)
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-    models = []
-    models.append(Introspector.from_pretrained(MODEL_NAME))
-    models.append(ALLonBert.from_pretrained(MODEL_NAME))
-
-    logging.debug(f'Network:\n\t## Judge:\n\t\t{models[0]}\n\n\t## Reasoner:\n\t\t{models[1]}')
+    
+    # logging.debug(f'Network:\n\t## Judge:\n\t\t{models[0]}\n\n\t## Reasoner:\n\t\t{models[1]}')
 
     if args.load: # 之後再改 反正先False
         state_dict = torch.load(args.load, map_location=device)
-        models[0].load_state_dict(state_dict)
+        reasoner.load_state_dict(state_dict)
         logging.info(f'Model loaded from {args.load}')
 
-    models = [model.to(device=device) for model in models]
     try:
-        train_model(
-            models=models,
+        sep_train(
+            model = reasoner, # 之後可以考慮加入判斷是不是list的來一次練兩個 (已經改了)
+            m_name = 'Reasoner', # model_name
+            device = device,
             epochs=args.epochs,
             batch_size=args.batch_size,
             learning_rate=args.lr,
-            device=device,
         )
     except torch.cuda.OutOfMemoryError:
         logging.error('Detected OutOfMemoryError! '
@@ -376,7 +499,7 @@ if __name__ == '__main__':
         torch.cuda.empty_cache()
         # models[0].use_checkpointing() # 也是他原Model有寫的東西 用來把每一層載回來
         train_model(
-            models=models,
+            models=reasoner,
             epochs=args.epochs,
             batch_size=args.batch_size,
             learning_rate=args.lr,
