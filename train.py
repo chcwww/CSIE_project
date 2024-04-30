@@ -450,6 +450,16 @@ def sep_train(
             # 'f1 (batch)': 2*batch_tp / (2*batch_tp + batch_fn + batch_fp),
             # 'recall (batch)': batch_tp / (batch_tp + batch_fn),
             # 'precision (batch)': batch_tp / (batch_tp + batch_fp),
+            
+        logging.info(f"""
+            Model {m_name} (epoch) : 
+                loss      ->  {epoch_loss / batch_steps:.4f} 
+                accuracy  ->  {(epoch_sum/epoch_len).item():.4f}
+                precision ->  {epoch_tp / (epoch_tp + epoch_fp):.4f}
+                recall    ->  {epoch_tp / (epoch_tp + epoch_fn):.4f}
+                f1-score  ->  {2*epoch_tp / (2*epoch_tp + epoch_fn + epoch_fp):.4f}
+                    """)
+        
         if DO_VALID :
             val_set = interface_val.build_strong_buffer()
             val_loader = DataLoader(val_set, collate_fn=buffer_collate, **loader_args)
@@ -521,15 +531,6 @@ def sep_train(
             state_dict = model.state_dict()
             torch.save(state_dict, str(dir_ch_this / 'checkpoint_epoch{}_{}.pth'.format(epoch, m_name)))
             logging.info(f'Model {m_name} : Checkpoint {epoch} saved!')
-
-        logging.info(f"""
-            Model {m_name} (epoch) : 
-                loss      ->  {epoch_loss / batch_steps:.4f} 
-                accuracy  ->  {(epoch_sum/epoch_len).item():.4f}
-                precision ->  {epoch_tp / (epoch_tp + epoch_fp):.4f}
-                recall    ->  {epoch_tp / (epoch_tp + epoch_fn):.4f}
-                f1-score  ->  {2*epoch_tp / (2*epoch_tp + epoch_fn + epoch_fp):.4f}
-                    """)
             
 
 
