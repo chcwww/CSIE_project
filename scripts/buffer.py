@@ -1,7 +1,7 @@
 import torch
 from copy import copy
 from transformers import AutoTokenizer
-from utils.util import CAPACITY, BLOCK_SIZE, DEFAULT_MODEL_NAME
+from utils.util import CAPACITY, BLOCK_SIZE, BIG_MODEL_NAME
 import random
 from bisect import bisect_left
 from itertools import chain
@@ -23,7 +23,7 @@ def textIoU(pred, answer) :
   return IoU
 
 class Block:
-    tokenizer = AutoTokenizer.from_pretrained(DEFAULT_MODEL_NAME)
+    tokenizer = AutoTokenizer.from_pretrained(BIG_MODEL_NAME)
     def __init__(self, ids, pos, blk_type=1, choose = 0, place = -1, **kwargs):
         self.ids = ids
         self.pos = pos # 在第幾句 (全局而言)
