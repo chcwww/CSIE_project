@@ -341,7 +341,7 @@ class Buffer:
                     get_blk_pos.append(b.place) # 放在後面避免前面error了
         except Exception as e:
             print(e)
-            print('There are toooooo many blocks...')
+            # print('There are toooooo many blocks...')
         logging.debug(f"\nHere is pos (place) : {get_blk_pos}")
         return ids, att_masks, type_ids, get_blk_pos
 
@@ -358,7 +358,7 @@ class Buffer:
         t = 0
         for b in self.blocks: # lable是每個token都給其relevence
             w = t + (len(b) if length is None else length)
-            if b.relevance >= 1:
+            if b.choose >= 1:
                 relevance[t: w] = 1
             t = w
         return relevance

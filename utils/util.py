@@ -54,8 +54,8 @@ USE_PATH = AttributeDict({
         'toy' : Path(os.path.join(os.getcwd(), 'data', f'{DATA_NAME}_strong_toy_train.pkl'))
     }),
     'weak' : AttributeDict({
-        'train' : Path(os.path.join(os.getcwd(), 'data', 'weak',f'{DATA_NAME}_weak_train.pkl')),
-        'toy' : Path(os.path.join(os.getcwd(), 'data', 'weak',f'{DATA_NAME}_weak_toy_train.pkl'))       
+        'train' : Path(os.path.join(os.getcwd(), 'data', f'{DATA_NAME}_weak_train.pkl')),
+        'toy' : Path(os.path.join(os.getcwd(), 'data', f'{DATA_NAME}_weak_toy_train.pkl'))       
     })
 })
 

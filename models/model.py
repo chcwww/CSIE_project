@@ -9,19 +9,13 @@ import os
 # from utils.util import MODEL_NAME
 
 # check branch
-class Introspector(BertPreTrainedModel):
-    
-    config_class = RobertaConfig
-    pretrained_model_archive_map = None
-    base_model_prefix = "roberta"
-
-    def __init__(self, config):
-        super(Introspector, self).__init__(config)
-        self.roberta = RobertaModel(config)
+class Introspector(torch.nn.Module):
+    def __init__(self, m_name):
+        super(Introspector, self).__init__()
+        self.roberta = AutoModel.from_pretrained(m_name)
         self.dropout = torch.nn.Dropout(0.1)
-        self.classifier = torch.nn.Linear(config.hidden_size, 1)
-
-        self.init_weights()
+        bert_dim = self.roberta.config.hidden_size
+        self.classifier = torch.nn.Linear(bert_dim, 1)
 
     def forward(
         self,

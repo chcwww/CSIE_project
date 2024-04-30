@@ -6,7 +6,7 @@ import random
 import sys
 from pathlib import Path # 會幫忙處理路徑格式
 from tqdm import tqdm, trange
-from transformers import AutoTokenizer, AutoModel
+from transformers import AutoTokenizer, AutoModel, get_cosine_schedule_with_warmup
 from copy import deepcopy
 import numpy as np
 
@@ -316,17 +316,128 @@ def train_model(
         if epoch > 1 :
             interface.apply_changes_from_dir(TMP_DIR)
 
-# from importlib import reload
-# import models.model as mod
-# reload(mod) # 終於找到了
-# model = mod.ALLonBert_v2(MODEL_NAME) # 之後可以考慮加入判斷是不是list的來一次練兩個 (已經改了)
-# m_name = 'Reasoner' # model_name
-# device = 'cpu'
-# epochs: int = 5
-# batch_size: int = 3
-# learning_rate: float = 1e-5
-# val_percent: float = 0.1
-# save_checkpoint: bool = True
+from importlib import reload
+import models.model as mod
+# from utils.util import SAVE_DIR, TMP_DIR, LOG_DIR, USE_PATH, CAPACITY, MODEL_NAME, BIG_MODEL_NAME
+import utils.util as utl
+# from scripts.data_helper import SimpleListDataset, BlkPosInterface
+import scripts.data_helper as hep
+reload(mod) # 終於找到了
+reload(utl) 
+reload(hep)
+BlkPosInterface = hep.BlkPosInterface
+USE_PATH = utl.USE_PATH
+model = mod.Introspector(MODEL_NAME) # 之後可以考慮加入判斷是不是list的來一次練兩個 (已經改了)
+m_name = 'Judge' # model_name
+device = 'cpu'
+epochs: int = 5
+batch_size: int = 3
+learning_rate: float = 1e-5
+val_percent: float = 0.1
+save_checkpoint: bool = True
+
+
+def sep_train_weak(
+        model = Introspector(MODEL_NAME), # 之後可以考慮加入判斷是不是list的來一次練兩個 (已經改了)
+        m_name = 'Judge', # model_name
+        device = 'cpu',
+        epochs: int = 5,
+        batch_size: int = 4,
+        learning_rate: float = 1e-5,
+        val_percent: float = 0.1,
+        save_checkpoint: bool = True,
+):
+    # 1 Create dataset
+    os.makedirs(TMP_DIR, exist_ok=True)
+    # sw_dataset = SimpleListDataset(USE_PATH.weak.toy)
+    sw_dataset = SimpleListDataset(USE_PATH.weak.train)
+
+    # 2.b Create interface
+    n_val = int((len(sw_dataset))*val_percent)
+    n_train = len(sw_dataset) - n_val
+    train_set, val_set = torch.utils.data.random_split(sw_dataset, [n_train, n_val])
+    interface = BlkPosInterface(train_set)
+    interface_val = BlkPosInterface(val_set)
+
+    ## Original module part
+    # 3. Create data loaders (args)
+    loader_args = dict(batch_size=batch_size, num_workers=os.cpu_count(), pin_memory=True)
+
+    # train_loader = DataLoader(train_set, shuffle=True, **loader_args)
+
+    logging.info(f'''Starting training:
+        Epochs:          {epochs}
+        Batch size:      {batch_size}
+        Learning rate:   {learning_rate}
+        Training size:   {n_train}
+        Validation size: {n_val}
+        Checkpoints:     {save_checkpoint}
+        Device:          {device.type}
+    ''')
+
+    # 4. Set up the optimizer, the loss and the learning rate scheduler
+    DO_VALID = True
+    optimizer = optim.AdamW(model.parameters(), lr = learning_rate)
+    total_steps = epochs*int(len(train_set)/batch_size)
+    scheduler = get_cosine_schedule_with_warmup(optimizer, 100, total_steps)
+    # scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=5)
+
+    global_step = 0
+    epoch_loss = 0
+    # 5. Begin training
+    # epoch = 1
+    for epoch in range(1, epochs + 1):
+        # Update interface
+        train_set = interface.build_random_buffer('1,1,1,1')
+
+        train_loader = DataLoader(train_set, shuffle=True, 
+                                    collate_fn = buffer_collate, # 讓dataloader可以迭代buffer類
+                                    **loader_args
+                                    )
+
+        model.train()
+        _file = open(Path(os.path.join(TMP_DIR, 'estimations_{}.txt'.format(device))))
+        for bufs in (pbar:=tqdm(train_loader, desc=f'Epoch {epoch}/{epochs}', unit=f'Paragraph({batch_size})')) : 
+            batch_steps += 1
+            # Make inputs for reasoner
+            inputs = torch.zeros(4, len(bufs), CAPACITY, dtype=torch.long, device=device)
+            for i, buf in enumerate(bufs):
+                buf.export(out=(inputs[0, i], inputs[1, i], inputs[2, i])) # 和reasoner一樣設定input
+            # Train the introspector after labeling
+            for i, buf in enumerate(bufs):
+                buf.export_relevance(device=device, out=inputs[3, i]) # 用來設定judge的label(由relevance)
+            # Label the relevance by the current reasoner  
+            loss, logits = model(*inputs[:3], labels=inputs[3])
+            for i, buf in enumerate(bufs):
+                _write_estimation(_file, buf, _score_blocks(buf, torch.sigmoid(logits[i]))) # 把這輪跑完的relevance更新到檔案上
+
+            optimizer.zero_grad()
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm = 10)
+            optimizer.step()
+            scheduler.step()
+
+            global_step += 1
+            epoch_loss += loss.item()
+            pbar.set_postfix(**{
+                'loss (batch)': loss.item()
+                })
+            
+        logging.info(f"""
+            Model {m_name} (epoch) : 
+                loss  ->  {epoch_loss / batch_steps:.4f}
+                    """)
+            
+        interface.collect_estimations_from_dir(TMP_DIR)
+        
+        if save_checkpoint:
+            dir_ch_this = Path(dir_checkpoint / 'checkpoint' / m_name)
+            Path(dir_ch_this).mkdir(parents=True, exist_ok=True)
+            state_dict = model.state_dict()
+            torch.save(state_dict, str(dir_ch_this / 'checkpoint_epoch{}_{}.pth'.format(epoch, m_name)))
+            logging.info(f'Model {m_name} : Checkpoint {epoch} saved!')
+
+
 def sep_train(
         model = ALLonBert_v2(MODEL_NAME), # 之後可以考慮加入判斷是不是list的來一次練兩個 (已經改了)
         m_name = 'Reasoner', # model_name
@@ -568,6 +679,7 @@ if __name__ == '__main__':
         MODEL_NAME = BIG_MODEL_NAME # 有指定的話就給個新的
         
     reasoner = ALLonBert_v2(MODEL_NAME).to(device)
+    reasoner = Introspector(MODEL_NAME).to(device)
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
     
     # logging.debug(f'Network:\n\t## Judge:\n\t\t{models[0]}\n\n\t## Reasoner:\n\t\t{models[1]}')
@@ -578,6 +690,14 @@ if __name__ == '__main__':
         logging.info(f'Model loaded from {args.load}')
 
     # try:
+    sep_train_weak(
+        model = reasoner, # 之後可以考慮加入判斷是不是list的來一次練兩個 (已經改了)
+        m_name = 'Judge', # model_name
+        device = device,
+        epochs=args.epochs,
+        batch_size=args.batch_size,
+        learning_rate=args.lr,       
+    )
     sep_train(
         model = reasoner, # 之後可以考慮加入判斷是不是list的來一次練兩個 (已經改了)
         m_name = 'Reasoner', # model_name

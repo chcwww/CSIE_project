@@ -86,10 +86,11 @@ class BlkPosInterface:
                 buf = Buffer()
                 # 隨機找了一段continuos的blocks裝上去
                 buf.blocks = qbuf.blocks + dbuf.blocks[st + i * lb:st + (i+1) * lb]
-                ret.append(buf) 
+                ret.append(buf)
             # 2. pos + neg
             # p就是relv高的 n就是relv低的
-            pbuf, nbuf = dbuf.filtered(lambda blk, idx: blk.relevance >= 1, need_residue=True)
+            # pbuf, nbuf = dbuf.filtered(lambda blk, idx: blk.relevance >= 1, need_residue=True)
+            pbuf, nbuf = dbuf.filtered(lambda blk, idx: blk.choose >= 1, need_residue=True)            
             for i in range(n1):
                 # 盡量放pos 真的放完了再放nbuf
                 selected_pblks = random.sample(pbuf.blocks, min(lb, len(pbuf)))
