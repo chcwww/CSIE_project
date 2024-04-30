@@ -457,12 +457,12 @@ def sep_train(
             logging.info(f'Model {m_name} : Checkpoint {epoch} saved!')
 
         logging.info(f"""
-            Model {m_name} : 
-                loss (epoch)      ->  {epoch_loss / batch_steps:.4f} 
-                accuracy (epoch)  ->  {(epoch_sum/epoch_len).item():.4f}
-                precision (epoch) ->  {epoch_tp / (epoch_tp + epoch_fp):.4f}
-                recall (epoch)    ->  {epoch_tp / (epoch_tp + epoch_fn):.4f}
-                f1-score (epoch)  ->  {2*epoch_tp / (2*epoch_tp + epoch_fn + epoch_fp):.4f}
+            Model {m_name} (epoch) : 
+                loss      ->  {epoch_loss / batch_steps:.4f} 
+                accuracy  ->  {(epoch_sum/epoch_len).item():.4f}
+                precision ->  {epoch_tp / (epoch_tp + epoch_fp):.4f}
+                recall    ->  {epoch_tp / (epoch_tp + epoch_fn):.4f}
+                f1-score  ->  {2*epoch_tp / (2*epoch_tp + epoch_fn + epoch_fp):.4f}
                     """)
             
 
