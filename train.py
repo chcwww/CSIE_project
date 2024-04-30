@@ -8,6 +8,7 @@ from pathlib import Path # 會幫忙處理路徑格式
 from tqdm import tqdm, trange
 from transformers import AutoTokenizer, AutoModel
 from copy import deepcopy
+import numpy as np
 
 ## torch
 import torch
@@ -338,7 +339,8 @@ def sep_train(
 ):
     # 1 Create dataset
     os.makedirs(TMP_DIR, exist_ok=True)
-    sw_dataset = SimpleListDataset(USE_PATH.strong.train)
+    sw_dataset = SimpleListDataset(USE_PATH.strong.toy)
+    # sw_dataset = SimpleListDataset(USE_PATH.strong.train)
 
     # 2.b Create interface
     train_set = sw_dataset
@@ -384,6 +386,9 @@ def sep_train(
         batch_steps = 0
         epoch_sum = 0
         epoch_len = 0
+        epoch_tp = 0
+        epoch_fn = 0
+        epoch_fp = 0
         for bufs in (pbar:=tqdm(train_loader, desc=f'Epoch {epoch}/{epochs}', unit=' Paragraph')) : 
             batch_steps += 1
             # Make inputs for reasoner
@@ -406,11 +411,25 @@ def sep_train(
             local_labels = result[1]
             softmax_preds = [F.softmax(logit, dim = 1) for logit in logits]
             preds = [torch.max(s_pred, dim=1).indices for s_pred in softmax_preds]
-            sum_correct = sum(sum(ans) for ans in map(lambda x, y : x==y, preds, local_labels))
-            len_label = sum(len(lab) for lab in local_labels)
+            # sum_correct = sum(sum(ans) for ans in map(lambda x, y : x==y, preds, local_labels))
+            # len_label = sum(len(lab) for lab in local_labels)
+            
+            preds_list = np.array(sum([pred.tolist() for pred in preds], []))
+            labels_list = np.array(sum([lab.tolist() for lab in local_labels], []))
+            # sum_correct = sum(map(lambda x, y : x==y, preds_list, labels_list))
+            sum_correct = (preds_list == labels_list).sum()
+            len_label = len(labels_list)
+            
             acc_batch = (sum_correct / len_label).item()
             epoch_sum += sum_correct
             epoch_len += len_label
+            
+            batch_tp = np.logical_and(labels_list == 1, preds_list == 1).sum(axis=0)
+            batch_fn = np.logical_and(labels_list == 1, preds_list == 0).sum(axis=0)
+            batch_fp = np.logical_and(labels_list == 0, preds_list == 1).sum(axis=0)            
+            epoch_tp += batch_tp
+            epoch_fn += batch_fn
+            epoch_fp += batch_fp
             # logging.info(f'Model {m_name} : batch acc -> {acc_batch:.3f}')
 
             # _intervention(_file, bufs, labels, crucials, result, model)
@@ -424,8 +443,11 @@ def sep_train(
             global_step += 1
             epoch_loss += loss.item()
             pbar.set_postfix(**{
-                'loss (batch)': loss.item(),
-                'acc  (batch)': acc_batch,
+                'acc (batch)': acc_batch,
+                'f1 (batch)': 2*batch_tp / (2*batch_tp + batch_fn + batch_fp),
+                'recall (batch)': batch_tp / (batch_tp + batch_fn),
+                'precision (batch)': batch_tp / (batch_tp + batch_fp),
+                'loss (batch)': loss.item()
                 })
         
         if save_checkpoint:
@@ -435,7 +457,11 @@ def sep_train(
             torch.save(state_dict, str(dir_ch_this / 'checkpoint_epoch{}_{}.pth'.format(epoch, m_name)))
             logging.info(f'Model {m_name} : Checkpoint {epoch} saved!')
 
-        logging.info(f'Model {m_name} : epoch loss -> {epoch_loss / batch_steps} | epoch acc -> {(epoch_sum/epoch_len).item()}')
+        logging.info(f'Model {m_name} : epoch loss -> {epoch_loss / batch_steps} |\
+            epoch acc -> {(epoch_sum/epoch_len).item()} |\
+            precision (batch) -> {epoch_tp / (epoch_tp + epoch_fp)} |\
+            recall (batch) -> {epoch_tp / (epoch_tp + epoch_fn)} |\
+            f1 (batch) -> {2*epoch_tp / (2*epoch_tp + epoch_fn + epoch_fp)}')
             
 
 
