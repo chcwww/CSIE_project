@@ -113,9 +113,11 @@ class BlkPosInterface:
             buf.blocks = qbuf.blocks.copy()
             now = st
             while 1:
-                if sum(len(b) for b in buf.blocks) + len(dbuf.blocks[now]) <= 512 and now < len(dbuf):
+                if sum(len(b) for b in buf.blocks) + len(dbuf.blocks[now]) <= 512:
                     buf.blocks.append(dbuf.blocks[now])
                     now += 1
+                    if now >= len(dbuf):
+                        break
                 else:
                     break
             ret.append(buf)
