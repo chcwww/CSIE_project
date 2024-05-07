@@ -520,7 +520,8 @@ def sep_train(
             result = model(*inputs, labels=labels, pos = blk_pos, device = device)
             
             losses = result[0] if isinstance(result, tuple) else result
-            loss = sum(losses)/len(losses) # Mean or Sum ?
+            # loss = sum(losses)/len(losses) # Mean or Sum ?
+            loss = sum(losses)
             
             logits = result[2]
             local_labels = result[1]
