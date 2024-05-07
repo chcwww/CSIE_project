@@ -54,6 +54,7 @@ def mem_replay(introspector, qbuf, dbuf, device, times='3,5', batch_size_inferen
         # fill the buffer up
         indices = estimations.argsort(descending=True)
         qbuf_size = qbuf.calc_size()
+        # 用estimation大小來填滿這輪的BERT Input
         for idx in indices:
             if qbuf_size + len(dbuf[idx]) > CAPACITY:
                 break
@@ -82,3 +83,14 @@ def mem_replay(introspector, qbuf, dbuf, device, times='3,5', batch_size_inferen
         B_set = [blk for blk in qbuf if blk.blk_type == 1]
     return filtered_qbuf, torch.tensor(filtered_relevance_blk)
 
+if __name__ == '__main__' :
+    print("""
+        Memory Replay flow :\n
+            Input buffer <--------
+                    | memreplay |
+                    --------> Judge => Output -------> Reasoner => Desire Information (summary)
+                                        |                ^
+                                        v                |
+                                    estimations -> select top block 
+                                                (until exceed 512)
+    """)

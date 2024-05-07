@@ -165,7 +165,9 @@ class Buffer:
                 # print(cnt)
                 # print(f"here : {tmp}")
                 # def __init__(self, ids, pos, blk_type=1, choose = 0, place = -1, **kwargs):
-                ret.insert(Block(tokenizer.convert_tokens_to_ids(tmp), cnt, choose = blk_chose, place = star, **tmp_kwargs))
+                insert_blk = Block(tokenizer.convert_tokens_to_ids(tmp), cnt, choose = blk_chose, place = star, **tmp_kwargs)
+                insert_blk.relevance = blk_chose
+                ret.insert(insert_blk)
                 star += 1
 
             tmp_kwargs['label_name'] = 'taken'

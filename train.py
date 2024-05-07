@@ -387,7 +387,8 @@ def sep_train_weak(
     # epoch = 1
     for epoch in range(1, epochs + 1):
         # Update interface
-        train_set = interface.build_random_buffer('1,1,1,1')
+        # train_set = interface.build_random_buffer('1,1,1,1')
+        train_set = interface.build_random_buffer_version2()
 
         train_loader = DataLoader(train_set, shuffle=True, 
                                     collate_fn = buffer_collate, # 讓dataloader可以迭代buffer類
@@ -408,6 +409,7 @@ def sep_train_weak(
             for i, buf in enumerate(bufs):
                 buf.export_relevance(device=device, out=inputs[3, i]) # 用來設定judge的label(由relevance)
             # Label the relevance by the current reasoner  
+            # breakpoint()
             loss, logits = model(*inputs[:3], labels=inputs[3])
             for i, buf in enumerate(bufs):
                 _write_estimation(_file, buf, _score_blocks(buf, torch.sigmoid(logits[i]))) # 把這輪跑完的relevance更新到檔案上

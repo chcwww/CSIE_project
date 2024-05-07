@@ -72,6 +72,7 @@ class BlkPosInterface:
                 os.replace(filename, os.path.join(tmp_dir, 'backup_' + shortname))
 
     def build_random_buffer(self, num_samples): 
+        # breakpoint()
         n0, n1 = [int(s) for s in num_samples.split(',')][:2]
         ret = []
         max_blk_num = CAPACITY // (BLOCK_SIZE + 1)
@@ -100,6 +101,49 @@ class BlkPosInterface:
                 ret.append(buf.sort_())
         return SimpleListDataset(ret)
 
+    def build_random_buffer_version2(self): 
+        # breakpoint()
+        ret = []
+        max_token_num = 512
+        logging.info('building buffers for introspection (version2)...')
+        
+        for qbuf, dbuf in tqdm(self.dataset):
+            st = random.randint(0, max(0, int(len(dbuf)/2)))
+            buf = Buffer()
+            buf.blocks = qbuf.blocks.copy()
+            now = st
+            while 1:
+                if sum(len(b) for b in buf.blocks) + len(dbuf.blocks[now]) <= 512 and now < len(dbuf):
+                    buf.blocks.append(dbuf.blocks[now])
+                    now += 1
+                else:
+                    break
+            ret.append(buf)
+            
+            pbuf, nbuf = dbuf.filtered(lambda blk, idx: blk.choose >= 1, need_residue=True)
+            pb = pbuf.blocks.copy()
+            nb = nbuf.blocks.copy()            
+            random.shuffle(pb)
+            random.shuffle(nb)
+            buf = Buffer()
+            buf.blocks = qbuf.blocks.copy()
+            # pbuf不大
+            if sum(len(b) for b in buf.blocks) + sum(len(b) for b in pb) <= 512:
+                buf.blocks += pb
+                for b1 in nb:
+                    if sum(len(b) for b in buf.blocks) + len(b1) <= 512:
+                        buf.blocks.append(b1)
+                    else:
+                        break
+            else: # pbuf太大
+                for b1 in pb:
+                    if sum(len(b) for b in buf.blocks) + len(b1) <= 512:
+                        buf.blocks.append(b1)
+                    else:
+                        break
+            ret.append(buf.sort_())
+        return SimpleListDataset(ret)
+    
     def build_promising_buffer(self, num_samples):
         n2, n3 = [int(x) for x in num_samples.split(',')][2:]
         ret = []
