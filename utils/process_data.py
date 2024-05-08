@@ -10,7 +10,7 @@ sys.path.append(root_dir)
 print(f"Dir now : {os.getcwd()}")
 
 from scripts.buffer import Buffer
-from utils.util import DEFAULT_MODEL_NAME, DATA_NAME
+from utils.util import MODEL_NAME, DATA_NAME
 
 def pdftext_to_para_v2(text_data) :
   paragraph = []
@@ -28,6 +28,7 @@ def pdftext_to_para_v2(text_data) :
   iter_data = zip(text_data.weak_choose, text_data.strong_choose, text_data.paragraph)
 
   for weak, strong, text in iter_data :
+    text = str(text)
     if(len(text) > 5 and text[0:5] == "-----") : # 遇到分隔
       count += 1
       if count % 10 == 0 :
@@ -51,7 +52,7 @@ def pdftext_to_para_v2(text_data) :
           {'para' : test_para, 'strong' : test_label, 'weak' : None}]
 
 def process(para, dataset_name, label_type = 'strong', toy_sample = 0):
-    tokenizer = AutoTokenizer.from_pretrained(DEFAULT_MODEL_NAME)
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
     cnt, batches = 0, []
     
     trans_len = len(para['para']) if not toy_sample else 5
@@ -73,8 +74,11 @@ def process(para, dataset_name, label_type = 'strong', toy_sample = 0):
     return batches
 
 if __name__ == "__main__" :
-  text_data = pd.read_csv(r"C:\Users\chcww\Downloads\社會期刊訓練資料集_threshold0.6.csv")
-  train_data, test_data = pdftext_to_para_v2(text_data)
+  text_data = pd.read_csv(r"C:\Users\chcww\Downloads\社會期刊訓練資料集_new.csv")
+  text_data_add = pd.read_csv(r"C:\Users\chcww\Downloads\社會期刊訓練資料集補充_new.csv")
+
+  text_data_combine = pd.concat([text_data, text_data_add], axis=0)
+  train_data, test_data = pdftext_to_para_v2(text_data_combine)
 
   process(train_data, 'train', 'strong')
   process(train_data, 'train', 'weak')
