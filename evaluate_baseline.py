@@ -42,23 +42,23 @@ for i, para in tqdm(enumerate(sw_dataset)):
     dbuf = para[1]
     global_label = []
     global_preds = []
-    for blk in dbuf.blocks:
+    blk_len = len(dbuf.blocks)
+    buf_start = 0
+    
+    while buf_start < blk_len:
         buf = Buffer()
-        buf.blocks = [blk]
-        info = [t for t in buf.export(device=device)]
-        
-        # Add [CLS]
-        info[0] = torch.cat([torch.tensor(101, device=device).view(-1), info[0]])
-        info[1] = torch.cat([torch.tensor(1, device=device).view(-1), info[1]])
-        info[2] = torch.cat([torch.tensor(1, device=device).view(-1), info[2]])
-        
+        buf.blocks = [qbuf.blocks[0]].copy()
+        buf.blocks += dbuf.blocks[buf_start:buf_start+8] # 8 is save
+        buf_start += 8
+    
+        info = [t for t in buf.export(device=device)]  
         inputs = [t.unsqueeze(0) for t in info if not isinstance(t, list)]
         output = reason_model(*inputs)
         softmax_preds = F.softmax(output[0][0], dim = 1)
         pred = torch.max(softmax_preds, dim=1).indices
-        whatif = pred.item() == blk.choose
-        global_label.append(blk.choose)
-        global_preds.append(pred.item())
+        # whatif = pred.item() == blk.choose
+        global_label += [b.choose for b in buf.blocks if b.place!=-1]
+        global_preds += [p.item() for p in pred]
         
     round_label = np.array(global_label)
     round_preds = np.array(global_preds)
