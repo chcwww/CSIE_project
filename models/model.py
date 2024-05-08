@@ -445,17 +445,18 @@ class ALLonBert_v2(torch.nn.Module, Reasoner) :
         for nu, n_list in enumerate(sep_list) : # 為了避免每組的Block數不一樣 所以全部分開預測
             try:
                 out_tensor = torch.mean(sequence_outputs[nu, 1:n_list[0], :], 0).view(1, -1)
+
+                for i in range(len(n_list)-1) :
+                    # 整句取平均
+                    temp_tensor = torch.mean(sequence_outputs[nu, n_list[i]+1:n_list[i+1], :], 0).view(1, -1)
+                    out_tensor = torch.cat((out_tensor, temp_tensor), 0)
+                # out_tensor.shape [7 (num of block), 768]
+                logits = self.classifier(out_tensor)
+                # logits.shape [7 (num of block), 2]
+                logits_list.append(logits)
             except:
                 # breakpoint()
                 print('Weird buffer exist..')
-            for i in range(len(n_list)-1) :
-                # 整句取平均
-                temp_tensor = torch.mean(sequence_outputs[nu, n_list[i]+1:n_list[i+1], :], 0).view(1, -1)
-                out_tensor = torch.cat((out_tensor, temp_tensor), 0)
-            # out_tensor.shape [7 (num of block), 768]
-            logits = self.classifier(out_tensor)
-            # logits.shape [7 (num of block), 2]
-            logits_list.append(logits)
 
         outputs = (logits_list, )
         
