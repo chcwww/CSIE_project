@@ -443,7 +443,10 @@ class ALLonBert_v2(torch.nn.Module, Reasoner) :
         # sequence_outputs.shape [ 1 (batch size), 512 (token len limit), 768 (bert dim) ]
         logits_list = []
         for nu, n_list in enumerate(sep_list) : # 為了避免每組的Block數不一樣 所以全部分開預測
-            out_tensor = torch.mean(sequence_outputs[nu, 1:n_list[0], :], 0).view(1, -1)
+            try:
+                out_tensor = torch.mean(sequence_outputs[nu, 1:n_list[0], :], 0).view(1, -1)
+            except:
+                breakpoint()
             for i in range(len(n_list)-1) :
                 # 整句取平均
                 temp_tensor = torch.mean(sequence_outputs[nu, n_list[i]+1:n_list[i+1], :], 0).view(1, -1)
