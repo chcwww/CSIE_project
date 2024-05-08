@@ -48,9 +48,9 @@ for i, para in tqdm(enumerate(sw_dataset)):
         info = [t for t in buf.export(device=device)]
         
         # Add [CLS]
-        info[0] = torch.cat([torch.tensor(101).view(-1), info[0]])
-        info[1] = torch.cat([torch.tensor(1).view(-1), info[1]])
-        info[2] = torch.cat([torch.tensor(1).view(-1), info[2]])
+        info[0] = torch.cat([torch.tensor(101, device=device).view(-1), info[0]])
+        info[1] = torch.cat([torch.tensor(1, device=device).view(-1), info[1]])
+        info[2] = torch.cat([torch.tensor(1, device=device).view(-1), info[2]])
         
         inputs = [t.unsqueeze(0) for t in info if not isinstance(t, list)]
         output = reason_model(*inputs)
