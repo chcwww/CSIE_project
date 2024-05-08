@@ -695,14 +695,15 @@ if __name__ == '__main__':
         logging.info(f'Model loaded from {args.load}')
 
     # try:
-    sep_train_weak(
-        model = judger, # 之後可以考慮加入判斷是不是list的來一次練兩個 (已經改了)
-        m_name = 'Judge', # model_name
-        device = device,
-        epochs=args.epochs,
-        batch_size=args.batch_size,
-        learning_rate=args.lr,       
-    )
+    if not args.baseline:
+        sep_train_weak(
+            model = judger, # 之後可以考慮加入判斷是不是list的來一次練兩個 (已經改了)
+            m_name = 'Judge', # model_name
+            device = device,
+            epochs=args.epochs,
+            batch_size=args.batch_size,
+            learning_rate=args.lr,       
+        )
     sep_train(
         model = reasoner, # 之後可以考慮加入判斷是不是list的來一次練兩個 (已經改了)
         m_name = 'Reasoner', # model_name
