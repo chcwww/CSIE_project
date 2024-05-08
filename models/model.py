@@ -446,7 +446,8 @@ class ALLonBert_v2(torch.nn.Module, Reasoner) :
             try:
                 out_tensor = torch.mean(sequence_outputs[nu, 1:n_list[0], :], 0).view(1, -1)
             except:
-                breakpoint()
+                # breakpoint()
+                print('Weird buffer exist..')
             for i in range(len(n_list)-1) :
                 # 整句取平均
                 temp_tensor = torch.mean(sequence_outputs[nu, n_list[i]+1:n_list[i+1], :], 0).view(1, -1)
