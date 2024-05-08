@@ -455,7 +455,7 @@ class ALLonBert_v2(torch.nn.Module, Reasoner) :
                 # logits.shape [7 (num of block), 2]
                 logits_list.append(logits)
             except:
-                # breakpoint()
+                breakpoint()
                 print('Weird buffer exist..')
 
         outputs = (logits_list, )
