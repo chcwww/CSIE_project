@@ -284,7 +284,10 @@ class ALLonBert(BertPreTrainedModel, Reasoner) :
         for nu, c_l in enumerate(cls_list) : # 為了避免每組的Block數不一樣 所以全部分開預測
             # start = [com for com in c_l]
             # end =
-            out_tensor = sequence_outputs[nu, [com + 1 for com in c_l], :] # 拿到[CLS](或是+1就是第一個字)的BERT向量
+            try:
+                out_tensor = sequence_outputs[nu, [com + 1 for com in c_l], :] # 拿到[CLS](或是+1就是第一個字)的BERT向量
+            except:
+                breakpoint()
             logits = self.classifier(out_tensor) # problem 1 , 大家長度會不一樣 但在data_helper控制block數可以mitigate這個問題
             logits_list.append(logits)
 
