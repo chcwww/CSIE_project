@@ -665,7 +665,8 @@ def get_args():
     parser.add_argument('--log-level', '-g', type=bool, default=False, help='')
     parser.add_argument('--model-name', '-m', type=str, default=None,
                         choices = ['default', 'large'], help='Specifiy the name of BERT pre-trained model')
-
+    parser.add_argument('--baseline', action='store_true',
+                        help='Only train Reasoner model')
     return parser.parse_args()
 
     
