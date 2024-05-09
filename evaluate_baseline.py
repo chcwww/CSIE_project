@@ -27,7 +27,7 @@ R_DIR = Path(CHK_DIR / 'Reasoner')
 
 # device = 'cpu'
 device = "cuda" if torch.cuda.is_available() else "cpu"
-
+MODEL_NAME = BIG_MODEL_NAME
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 
 state_dict_reason = torch.load(Path(R_DIR / '{}_checkpoint_epoch.pth'.format('Reasoner')), map_location=device)
