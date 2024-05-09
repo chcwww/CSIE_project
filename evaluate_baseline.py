@@ -12,6 +12,14 @@ import numpy as np
 from operator import itemgetter 
 from transformers import AutoTokenizer
 
+def tabulate_metrics(tp_fn_fp_tn, main=''):
+    msg = f'====== Confusion Matrix: {main} =======\n'
+    header = '|'.join([f'{tp_fn_fp_tn[0]:^14}(TP)', f'{tp_fn_fp_tn[1]:^14}(FN)'])
+    values = '|'.join([f'{tp_fn_fp_tn[2]:^14}(FP)', f'{tp_fn_fp_tn[3]:^14}(TN)'])
+    msg += f"{' '*5}|{header}|\nTrue |{'-----------------:|' * 2}\n{' '*5}|{values}|\n{' '*5}{'Predict':^39}\n"
+    return msg
+
+
 CHK_DIR = Path(SAVE_DIR / 'checkpoint')
 R_DIR = Path(CHK_DIR / 'Reasoner')
 
@@ -34,6 +42,7 @@ sw_dataset = SimpleListDataset(USE_PATH.strong.test)
 total_tp = 0
 total_fn = 0
 total_fp = 0
+total_tn = 0
 total_sum = 0
 total_len = 0
 
@@ -65,9 +74,11 @@ for i, para in tqdm(enumerate(sw_dataset)):
     round_tp = np.logical_and(round_label == 1, round_preds == 1).sum(axis=0)
     round_fn = np.logical_and(round_label == 1, round_preds == 0).sum(axis=0)
     round_fp = np.logical_and(round_label == 0, round_preds == 1).sum(axis=0)
+    round_tn = np.logical_and(round_label == 0, round_preds == 0).sum(axis=0)
     total_tp += round_tp
     total_fn += round_fn
     total_fp += round_fp
+    total_tn = round_tn
     total_sum += (round_label==round_preds).sum()
     total_len += len(round_preds)
     print(f"""
@@ -78,6 +89,8 @@ for i, para in tqdm(enumerate(sw_dataset)):
             f1-score  ->  {2*round_tp / (2*round_tp + round_fn + round_fp):.4f}
         """)
     
+print(tabulate_metrics([total_tp, total_fn, total_fp, total_tn], 'Baseline evaluation'))
+    
 print(f"""
     Test data final result :
         accuracy  ->  {total_sum/total_len:.4f}
@@ -85,3 +98,7 @@ print(f"""
         recall    ->  {total_tp / (total_tp + total_fn):.4f}
         f1-score  ->  {2*total_tp / (2*total_tp + total_fn + total_fp):.4f}
     """)
+
+
+
+
