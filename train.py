@@ -379,7 +379,7 @@ def sep_train_weak(
     DO_VALID = True
     optimizer = optim.AdamW(model.parameters(), lr = learning_rate)
     total_steps = epochs*int(len(train_set)/batch_size)
-    scheduler = get_cosine_schedule_with_warmup(optimizer, 100, total_steps)
+    # scheduler = get_cosine_schedule_with_warmup(optimizer, 100, total_steps)
     # scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=5)
 
     global_step = 0
@@ -418,7 +418,7 @@ def sep_train_weak(
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm = 10)
             optimizer.step()
-            scheduler.step()
+            # scheduler.step()
 
             global_step += 1
             epoch_loss += loss.item()
@@ -482,7 +482,7 @@ def sep_train(
     # 4. Set up the optimizer, the loss and the learning rate scheduler
     DO_VALID = True
     optimizer = optim.AdamW(model.parameters(), lr = learning_rate)
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=5)
+    # scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=5)
 
     global_step = 0
     # 5. Begin training
@@ -554,7 +554,7 @@ def sep_train(
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm = 10)
             optimizer.step()
-            scheduler.step(acc_batch)
+            # scheduler.step(acc_batch)
 
             global_step += 1
             epoch_loss += loss.item()
