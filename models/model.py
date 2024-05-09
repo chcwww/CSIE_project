@@ -476,7 +476,7 @@ class ALLonBert_v2(torch.nn.Module, Reasoner) :
                         local_label[local_id] = 1
                 local_label = local_label.long()
                 # 算cross entropy
-                losses.append(loss_func(soft_max, local_label.view(-1).to(device)))
+                losses.append(loss_func(logit, local_label.view(-1).to(device)))
                 mu_label.append(local_label.view(-1))
             outputs = (losses, mu_label, ) + outputs
         return outputs
