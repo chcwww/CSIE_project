@@ -8,6 +8,7 @@ import os
 # print(f"Dir now : {os.getcwd()}")
 # from utils.util import MODEL_NAME
 
+
 # check branch
 class Introspector(torch.nn.Module):
     def __init__(self, m_name):
@@ -691,8 +692,8 @@ class ALLonBert_v3(torch.nn.Module, Reasoner) :
                 mu_label.append(local_label.view(-1))
                 
         if labels is not None :
-            relevance = torch.zeros((true_logits.shape[0], true_logits.shape[1]), device=device)
-            relevance = relevance.type_as(logits)
+            relevance = torch.zeros((true_logits.shape[0], true_logits.shape[1]), dtype=torch.long, device=device)
+            # relevance = relevance.type_as(logits)
             for batch_id, n_list in enumerate(sep_list):
                 t = 0
                 for idx, ls in enumerate(n_list):
@@ -700,7 +701,7 @@ class ALLonBert_v3(torch.nn.Module, Reasoner) :
                         relevance[batch_id, t: ls] = 1
                     t = ls + 1
             loss_fct = CrossEntropyLoss()
-            loss = loss_fct(true_logits.view(-1), relevance.view(-1))  
+            loss = loss_fct(true_logits.view(-1, 2), relevance.view(-1)) # 2 is class num
             outputs = ([loss], mu_label, ) + outputs
             # breakpoint()
         return outputs
