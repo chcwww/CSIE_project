@@ -346,11 +346,14 @@ def sep_train_weak(
         learning_rate: float = 1e-5,
         val_percent: float = 0.1,
         save_checkpoint: bool = True,
+        toy: bool = False,
 ):
     # 1 Create dataset
     os.makedirs(TMP_DIR, exist_ok=True)
-    # sw_dataset = SimpleListDataset(USE_PATH.weak.toy)
-    sw_dataset = SimpleListDataset(USE_PATH.weak.train)
+    if toy:
+        sw_dataset = SimpleListDataset(USE_PATH.weak.toy)
+    else:
+        sw_dataset = SimpleListDataset(USE_PATH.weak.train)
 
     # 2.b Create interface
     n_val = int((len(sw_dataset))*val_percent)
@@ -450,11 +453,14 @@ def sep_train(
         learning_rate: float = 1e-5,
         val_percent: float = 0.1,
         save_checkpoint: bool = True,
+        toy: bool = False,
 ):
     # 1 Create dataset
     os.makedirs(TMP_DIR, exist_ok=True)
-    # sw_dataset = SimpleListDataset(USE_PATH.strong.toy)
-    sw_dataset = SimpleListDataset(USE_PATH.strong.train)
+    if toy:
+        sw_dataset = SimpleListDataset(USE_PATH.strong.toy)
+    else:
+        sw_dataset = SimpleListDataset(USE_PATH.strong.train)
 
     # 2.b Create interface
     n_val = int((len(sw_dataset))*val_percent)
@@ -667,6 +673,10 @@ def get_args():
                         choices = ['default', 'large'], help='Specifiy the name of BERT pre-trained model')
     parser.add_argument('--baseline', action='store_true',
                         help='Only train Reasoner model')
+    parser.add_argument('--judge', action='store_true',
+                        help='Only train Judge model')
+    parser.add_argument('--toy', action='store_true',
+                        help='Use toy dataset')
     return parser.parse_args()
 
     
@@ -694,6 +704,8 @@ if __name__ == '__main__':
         reasoner.load_state_dict(state_dict)
         logging.info(f'Model loaded from {args.load}')
 
+    # if args.baseline==
+    
     # try:
     if not args.baseline:
         sep_train_weak(
@@ -702,16 +714,19 @@ if __name__ == '__main__':
             device = device,
             epochs=args.epochs,
             batch_size=args.batch_size,
-            learning_rate=args.lr,       
+            learning_rate=args.lr,  
+            toy=args.toy,     
         )
-    sep_train(
-        model = reasoner, # 之後可以考慮加入判斷是不是list的來一次練兩個 (已經改了)
-        m_name = 'Reasoner', # model_name
-        device = device,
-        epochs=args.epochs,
-        batch_size=args.batch_size,
-        learning_rate=args.lr,
-    )
+    if not args.judge:
+        sep_train(
+            model = reasoner, # 之後可以考慮加入判斷是不是list的來一次練兩個 (已經改了)
+            m_name = 'Reasoner', # model_name
+            device = device,
+            epochs=args.epochs,
+            batch_size=args.batch_size,
+            learning_rate=args.lr,
+            toy=args.toy,
+        )
     # except torch.cuda.OutOfMemoryError:
     #     logging.error('Detected OutOfMemoryError! '
     #                   '完蛋啦 爆炸了')
