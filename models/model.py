@@ -407,7 +407,7 @@ class ALLonBert_v2(torch.nn.Module, Reasoner) :
             # position of cls token
             pos = None, # important : should modify "reasoner_module.py"
             device = None,
-            debug = None,
+            debug_buf = None,
     ) :
         # input_ids, attention_mask, token_type_ids, labels, pos = *inputs, labels, blk_pos
         self.roberta = self.roberta.to(device)
