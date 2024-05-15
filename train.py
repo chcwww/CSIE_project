@@ -606,7 +606,7 @@ def sep_train(
                     # Extract the labels for reasoner, e.g. start and end position for QA reasoner
                     # crucials (list) : BATCH * [1, NUM_OF_BLOCK_blk_type==0]
                     labels, crucials = model.export_labels(bufs, device) # TODO A
-                    result = model(*inputs, labels=labels, pos = blk_pos, device = device)
+                    result = model(*inputs, labels=labels, pos = blk_pos, device = device, debug=bufs)
                     
                     losses = result[0] if isinstance(result, tuple) else result
                     loss = sum(losses) # Mean or Sum ?

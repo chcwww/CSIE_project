@@ -407,6 +407,7 @@ class ALLonBert_v2(torch.nn.Module, Reasoner) :
             # position of cls token
             pos = None, # important : should modify "reasoner_module.py"
             device = None,
+            debug = None,
     ) :
         # input_ids, attention_mask, token_type_ids, labels, pos = *inputs, labels, blk_pos
         self.roberta = self.roberta.to(device)
@@ -445,7 +446,7 @@ class ALLonBert_v2(torch.nn.Module, Reasoner) :
         for nu, n_list in enumerate(sep_list) : # 為了避免每組的Block數不一樣 所以全部分開預測
             try:
                 out_tensor = torch.mean(sequence_outputs[nu, 1:n_list[0], :], 0).view(1, -1)
-
+                # 想直接改成token-wise的跑loss
                 for i in range(len(n_list)-1) :
                     # 整句取平均
                     temp_tensor = torch.mean(sequence_outputs[nu, n_list[i]+1:n_list[i+1], :], 0).view(1, -1)
