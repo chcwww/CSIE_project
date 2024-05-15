@@ -189,17 +189,17 @@ class BlkPosInterface:
             buf.blocks = qbuf.blocks
             blk_pos = []
             for b in pbuf.blocks :
-                if local_len + len(b) < 512 :
+                if local_len + len(b) < 512 and len(b) != 0 :
                     buf.blocks = buf.blocks + [b]
                     blk_pos.append(b.pos)
                     local_len += len(b)
             for b in nbuf.blocks :
                 # 已選的前後句
-                if local_len + len(b) < 512 and ((b.pos + 1) in blk_pos or (b.pos - 1) in blk_pos) :
+                if local_len + len(b) < 512 and ((b.pos + 1) in blk_pos or (b.pos - 1) in blk_pos) and len(b) != 0 :
                     buf.blocks += [b]
                     local_len += len(b)
             for b in nbuf.blocks:
-                if local_len + len(b) <= 512 and b not in buf.blocks:
+                if local_len + len(b) <= 512 and b not in buf.blocks and len(b) != 0 :
                     buf.blocks += [b]
                     local_len += len(b)
             
