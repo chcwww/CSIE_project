@@ -2,7 +2,8 @@ CAPACITY = 512 # Working Memory
 BIG_MODEL_NAME = "luhua/chinese_pretrain_mrc_roberta_wwm_ext_large"
 MODEL_NAME = "bert-base-chinese"
 # BIG_MODEL_NAME = "bert-base-chinese"
-DATA_NAME = "sw_data"
+# DATA_NAME = "sw_data"
+DATA_NAME = "csl_data"
 
 BLOCK_SIZE = 63 # The max length of an episode
 BLOCK_MIN = 10 # The min length of an episode
