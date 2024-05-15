@@ -700,7 +700,7 @@ class ALLonBert_v3(torch.nn.Module, Reasoner) :
                         relevance[batch_id, t: ls] = 1
                     t = ls + 1
             loss_fct = CrossEntropyLoss()
-            loss = loss_fct(true_logits.view(-1), labels.view(-1))  
+            loss = loss_fct(true_logits.view(-1), relevance.view(-1))  
             outputs = ([loss], mu_label, ) + outputs
             # breakpoint()
         return outputs
