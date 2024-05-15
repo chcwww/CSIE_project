@@ -581,7 +581,7 @@ def sep_train(
                 f1-score  ->  {2*epoch_tp / (2*epoch_tp + epoch_fn + epoch_fp):.4f}
                     """)
         
-        if DO_VALID :
+        if DO_VALID and not toy :
             val_set = interface_val.build_strong_buffer()
             val_loader = DataLoader(val_set, collate_fn=buffer_collate, **loader_args)
             model.eval()
