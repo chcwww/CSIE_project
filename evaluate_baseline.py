@@ -1,6 +1,6 @@
 from utils.memreplay import mem_replay
 from scripts.buffer import Buffer
-from models.model import ALLonBert_v2
+from models.model import ALLonBert_v2, ALLonBert_v3
 from utils.util import SAVE_DIR, TMP_DIR, LOG_DIR, USE_PATH, CAPACITY, MODEL_NAME, BIG_MODEL_NAME
 from scripts.data_helper import SimpleListDataset
 
@@ -31,7 +31,7 @@ MODEL_NAME = BIG_MODEL_NAME
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 
 state_dict_reason = torch.load(Path(R_DIR / '{}_checkpoint_epoch.pth'.format('Reasoner')), map_location=device)
-reason_model = ALLonBert_v2(MODEL_NAME).to(device)
+reason_model = ALLonBert_v3(MODEL_NAME).to(device)
 reason_model.load_state_dict(state_dict_reason)
 
 sw_dataset = SimpleListDataset(USE_PATH.strong.test)
