@@ -185,16 +185,21 @@ class Buffer:
         ans_cnt = cnt + 1 # 這輪answer塊的全局位置
         cnt += 1
         star = 0 # Local位置
-
+        # breakpoint()
+        if len(d) == 0:
+            breakpoint()
         for tmp, blk_chose in d:
             
             tmp += '[SEP]' # 放棄開頭的CLS了
             cnt += 1
             star += 1
+            # if cnt==84109:
+            #     breakpoint()
             # choose : small label for blocks
             ret.insert(Block(tokenizer(tmp, add_special_tokens=False).input_ids, 
                              cnt, choose = blk_chose, place = star))
-            
+        # if ans_cnt==1056:
+        #     breakpoint()
         tmp_kwargs = {}
         tmp_kwargs['label_name'] = 'taken'
         tmp_kwargs['label'] = label # big label for full para

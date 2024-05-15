@@ -198,6 +198,11 @@ class BlkPosInterface:
                 if local_len + len(b) < 512 and ((b.pos + 1) in blk_pos or (b.pos - 1) in blk_pos) :
                     buf.blocks += [b]
                     local_len += len(b)
+            for b in nbuf.blocks:
+                if local_len + len(b) <= 512 and b not in buf.blocks:
+                    buf.blocks += [b]
+                    local_len += len(b)
+            
             ret.append(buf.sort_())
             
         return SimpleListDataset(ret)
