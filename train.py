@@ -24,7 +24,7 @@ from utils.util import SAVE_DIR, TMP_DIR, LOG_DIR, USE_PATH, CAPACITY, MODEL_NAM
 from utils.memreplay import mem_replay, _score_blocks
 from scripts.data_helper import SimpleListDataset, BlkPosInterface, find_lastest_checkpoint
 from scripts.buffer import buffer_collate
-from models.model import Introspector, ALLonBert_v2
+from models.model import Introspector, ALLonBert_v2, ALLonBert_v3
 
 print(f"Dir : {os.getcwd()}")
 
@@ -523,7 +523,7 @@ def sep_train(
             # Extract the labels for reasoner, e.g. start and end position for QA reasoner
             # crucials (list) : BATCH * [1, NUM_OF_BLOCK_blk_type==0]
             labels, crucials = model.export_labels(bufs, device) # TODO A
-            result = model(*inputs, labels=labels, pos = blk_pos, device = device)
+            result = model(*inputs, labels=labels, pos = blk_pos, device = device, debug_buf=bufs)
             
             losses = result[0] if isinstance(result, tuple) else result
             # loss = sum(losses)/len(losses) # Mean or Sum ?
@@ -606,7 +606,7 @@ def sep_train(
                     # Extract the labels for reasoner, e.g. start and end position for QA reasoner
                     # crucials (list) : BATCH * [1, NUM_OF_BLOCK_blk_type==0]
                     labels, crucials = model.export_labels(bufs, device) # TODO A
-                    result = model(*inputs, labels=labels, pos = blk_pos, device = device, debug_buf=bufs)
+                    result = model(*inputs, labels=labels, pos = blk_pos, device = device)
                     
                     losses = result[0] if isinstance(result, tuple) else result
                     loss = sum(losses) # Mean or Sum ?
@@ -693,7 +693,7 @@ if __name__ == '__main__':
     if args.model_name is not None and args.model_name == 'large' :
         MODEL_NAME = BIG_MODEL_NAME # 有指定的話就給個新的
         
-    reasoner = ALLonBert_v2(MODEL_NAME).to(device)
+    reasoner = ALLonBert_v3(MODEL_NAME).to(device)
     judger = Introspector(MODEL_NAME).to(device)
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
     
