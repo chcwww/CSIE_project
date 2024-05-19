@@ -25,7 +25,7 @@ from utils.memreplay import mem_replay, _score_blocks
 from scripts.data_helper import SimpleListDataset, BlkPosInterface, find_lastest_checkpoint
 from scripts.buffer import buffer_collate
 from models.model import Introspector, ALLonBert_v2, ALLonBert_v3
-from models.model import HierarchicalBert
+from models.hierbert import HierarchicalBert
 
 print(f"Dir : {os.getcwd()}")
 
