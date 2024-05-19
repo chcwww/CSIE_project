@@ -1,3 +1,6 @@
+"""
+ We should add argument to determine whether to use Big Model.
+"""
 from utils.memreplay import mem_replay
 from scripts.buffer import Buffer
 from models.model import ALLonBert_v2, ALLonBert_v3
@@ -57,6 +60,7 @@ for i, para in tqdm(enumerate(sw_dataset)):
     while buf_start < blk_len:
         buf = Buffer()
         buf.blocks = [qbuf.blocks[0]].copy()
+        # Using 8 block may produce error in CSL data (too long)
         buf.blocks += dbuf.blocks[buf_start:buf_start+8] # 8 is save
         buf_start += 8
     
