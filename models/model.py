@@ -652,27 +652,20 @@ class ALLonBert_v3(torch.nn.Module, Reasoner) :
         sequence_outputs = self.dropouts(sequence_outputs)
         # sequence_outputs = dropouts(sequence_outputs)
         
+        true_logits = self.classifier(sequence_outputs) # logits: [ 4, 512, 2 ]
+        
         # sequence_outputs.shape [ 1 (batch size), 512 (token len limit), 768 (bert dim) ]
         logits_list = []
         for nu, n_list in enumerate(sep_list) : # 為了避免每組的Block數不一樣 所以全部分開預測
             try:
-                out_tensor = torch.mean(sequence_outputs[nu, 1:n_list[0], :], 0).view(1, -1)
-                # 想直接改成token-wise的跑loss
-                for i in range(len(n_list)-1) :
-                    # 整句取平均
-                    temp_tensor = torch.mean(sequence_outputs[nu, n_list[i]+1:n_list[i+1], :], 0).view(1, -1)
-                    out_tensor = torch.cat((out_tensor, temp_tensor), 0)
-                # out_tensor.shape [7 (num of block), 768]
-                logits = self.classifier(out_tensor)
-                if (logits==logits).sum()!=len(logits)*2: # check nan
-                    breakpoint()
-                # logits.shape [7 (num of block), 2]
-                logits_list.append(logits)
+                local_logit = torch.mean(true_logits[nu, 1:n_list[0], :], 0).view(1, -1)
+                for i in range(len(n_list)-1):
+                    temp_logit = torch.mean(true_logits[nu, n_list[i]+1:n_list[i+1], :], 0).view(1, -1)
+                    local_logit = torch.cat((local_logit, temp_logit), 0)
+                logits_list.append(local_logit)
             except:
                 breakpoint()
                 print('Weird buffer exist..')
-                
-        true_logits = self.classifier(sequence_outputs) # logits: [ 4, 512, 2 ]
         
         outputs = (logits_list, )
         
