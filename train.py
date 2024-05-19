@@ -200,6 +200,7 @@ def hier_train(
             a_mask = torch.zeros(len(bufs), 64, 128, dtype=torch.long, device=device)
             for i, buf in enumerate(bufs):
                 dbuf = buf[1]
+                dbuf.blocks = dbuf.blocks[:64]
                 labels.append([blk.choose for blk in dbuf])
                 input_ids = torch.zeros(64, 128, dtype=torch.long, device=device)
                 attn_mask = torch.zeros(64, 128, dtype=torch.long, device=device)
