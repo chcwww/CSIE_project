@@ -25,6 +25,7 @@ from utils.memreplay import mem_replay, _score_blocks
 from scripts.data_helper import SimpleListDataset, BlkPosInterface, find_lastest_checkpoint
 from scripts.buffer import buffer_collate
 from models.model import Introspector, ALLonBert_v2, ALLonBert_v3
+from models.model import HierarchicalBert
 
 print(f"Dir : {os.getcwd()}")
 
@@ -104,50 +105,58 @@ def _intervention(_file, bufs, labels, crucials, loss_reasoner, model) :
             assert t == bs
 
 
-def train_model(
-        models, # 之後可以考慮加入判斷是不是list的來一次練兩個 (已經改了)
-        device,
+# from importlib import reload
+# import models.model as mod
+# # from utils.util import SAVE_DIR, TMP_DIR, LOG_DIR, USE_PATH, CAPACITY, MODEL_NAME, BIG_MODEL_NAME
+# import utils.util as utl
+# # from scripts.data_helper import SimpleListDataset, BlkPosInterface
+# import scripts.data_helper as hep
+# reload(mod) # 終於找到了
+# reload(utl) 
+# reload(hep)
+# BlkPosInterface = hep.BlkPosInterface
+# USE_PATH = utl.USE_PATH
+# model = mod.Introspector(MODEL_NAME) # 之後可以考慮加入判斷是不是list的來一次練兩個 (已經改了)
+# m_name = 'Hier' # model_name
+# device = 'cpu'
+# epochs: int = 5
+# batch_size: int = 3
+# learning_rate: float = 1e-5
+# val_percent: float = 0.1
+# save_checkpoint: bool = True
+# model = fake_model
+from torch.nn import CrossEntropyLoss
+def hier_train(
+        model = None, # 之後可以考慮加入判斷是不是list的來一次練兩個 (已經改了)
+        m_name = 'Hier', # model_name
+        device = 'cpu',
         epochs: int = 5,
-        batch_size: int = 1,
+        batch_size: int = 4,
         learning_rate: float = 1e-5,
         val_percent: float = 0.1,
         save_checkpoint: bool = True,
-        # img_scale: float = 0.5,
-        # amp: bool = False,
-        # weight_decay: float = 1e-8,
-        # momentum: float = 0.999,
-        # gradient_clipping: float = 1.0,
+        toy: bool = False,
 ):
     # 1 Create dataset
     os.makedirs(TMP_DIR, exist_ok=True)
-    sw_dataset = SimpleListDataset(TRAIN_SRC)
-
-    # 2.a Split into train / validation partitions
-    # n_val = int(len(sw_dataset) * val_percent)
-    # n_train = len(sw_dataset) - n_val
-    # train_set, val_set = random_split(sw_dataset, [n_train, n_val], generator=torch.Generator().manual_seed(0))
+    if toy:
+        sw_dataset = SimpleListDataset(USE_PATH.strong.toy)
+    else:
+        sw_dataset = SimpleListDataset(USE_PATH.strong.train)
 
     # 2.b Create interface
-    train_set = sw_dataset
-    n_train = len(train_set)
-    n_val = 0
-    interface = BlkPosInterface(train_set)
-    # interface_valid = BlkPosInterface(val_set)
+    n_val = int((len(sw_dataset))*val_percent)
+    n_train = len(sw_dataset) - n_val
+    train_set, val_set = torch.utils.data.random_split(sw_dataset, [n_train, n_val])
+    # interface = BlkPosInterface(train_set)
+    # interface_val = BlkPosInterface(val_set)
 
     ## Original module part
     # 3. Create data loaders (args)
     loader_args = dict(batch_size=batch_size, num_workers=os.cpu_count(), pin_memory=True)
 
-    train_loader = DataLoader(train_set, shuffle=True, **loader_args)
-    # val_loader = DataLoader(val_set, shuffle=False, **loader_args)
-    # , drop_last=True
-
-    # (Initialize logging)
-    # experiment = wandb.init(project='U-Net', resume='allow', anonymous='must')
-    # experiment.config.update(
-    #     dict(epochs=epochs, batch_size=batch_size, learning_rate=learning_rate,
-    #          val_percent=val_percent, save_checkpoint=save_checkpoint, img_scale=img_scale, amp=amp)
-    # )
+    train_loader = DataLoader(train_set, shuffle=True, collate_fn=buffer_collate, **loader_args)
+    val_loader = DataLoader(val_set, collate_fn=buffer_collate, **loader_args)
 
     logging.info(f'''Starting training:
         Epochs:          {epochs}
@@ -159,162 +168,178 @@ def train_model(
         Device:          {device.type}
     ''')
 
-    # 4. Set up the optimizer, the loss, the learning rate scheduler and the loss scaling for AMP
-    # optimizer = optim.RMSprop(model.parameters(),
-    #                           lr=learning_rate, weight_decay=weight_decay, momentum=momentum, foreach=True)
-    optimizer = []
-    scheduler = []
+    # 4. Set up the optimizer, the loss and the learning rate scheduler
+    DO_VALID = True
+    optimizer = optim.AdamW(model.parameters(), lr = learning_rate)
+    # scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=5)
 
-    optimizer.append(optim.AdamW(models[0].parameters(), lr = learning_rate))
-    scheduler.append(optim.lr_scheduler.ReduceLROnPlateau(optimizer[0], 'min', patience=5))  # goal: maximize Dice score
-    
-    optimizer.append(optim.AdamW(models[1].parameters(), lr = learning_rate))
-    scheduler.append(optim.lr_scheduler.ReduceLROnPlateau(optimizer[1], 'min', patience=5))
-
-    
-
-    # grad_scaler = torch.cuda.amp.GradScaler(enabled=amp)
-    # criterion = nn.CrossEntropyLoss() 
-    # if model.n_classes > 1 else nn.BCEWithLogitsLoss()
     global_step = 0
-
     # 5. Begin training
-    temp_loss = None
+    # epoch = 1
     for epoch in range(1, epochs + 1):
         # Update interface
-        for m_idx, model in enumerate(models) :
-            m_name = "Judge" if not m_idx else "Reasoner"
-            # print(f"Training {m_name}...")
-            logging.info(f"\n\n{'=' * 10} {m_name:^10} {'=' * 10}\n\n")
-            if temp_loss is not None :
-                logging.debug(f"\n\n{'=' * 10} {temp_loss:^10} {'=' * 10}\n\n")
-            # 建一個新的記錄檔
-            if m_idx == 0 :
-                _file = open(Path(os.path.join(TMP_DIR, 'estimations_{}.txt'.format(device))), 'w')
-            else :
-                _file = open(os.path.join(TMP_DIR, 'changes_{}.txt'.format(device)), 'w')
-                
-            # 每輪都要更新一次資料 (不知道會部會跟hw3一樣又因為num_workers卡住)
-            if m_idx == 0 : # Judge
-                train_set = interface.build_random_buffer(num_samples = '1,1,1,1') # 我其實也還不知道這怎麼搞
-            else : # Reasoner
-                if temp_loss is not None :
-                    temp_loss = None
-                interface.collect_estimations_from_dir(TMP_DIR) # 上一輪judge跑出來的mean( sigmoid(logits) )
-                train_set = interface.build_promising_buffer(num_samples = '1,1,1,1')
-                
-            train_loader = DataLoader(train_set, shuffle=True, 
-                                      collate_fn = buffer_collate, # 讓dataloader可以迭代buffer類
-                                      **loader_args
-                                      )
+        # train_set = interface.build_strong_buffer()
+            
+        # train_loader = DataLoader(train_set, shuffle=True, 
+        #                             collate_fn = buffer_collate, # 讓dataloader可以迭代buffer類
+        #                             **loader_args
+        #                             )
 
-            model.train()
-            epoch_loss = [0, 0]
-            batch_steps = 0
-            with tqdm(total=n_train*2, desc=f'Epoch {epoch}/{epochs}', unit=' item') as pbar:
+        model.train()
+        epoch_loss = 0
+        batch_steps = 0
+        epoch_sum = 0
+        epoch_len = 0
+        epoch_tp = 0
+        epoch_fn = 0
+        epoch_fp = 0
+        for bufs in (pbar:=tqdm(train_loader, desc=f'Epoch {epoch}/{epochs}', unit=f'Paragraph({batch_size})')) : 
+            batch_steps += 1
+            labels = []
+            in_ids = torch.zeros(len(bufs), 64, 128, dtype=torch.long, device=device)
+            a_mask = torch.zeros(len(bufs), 64, 128, dtype=torch.long, device=device)
+            for i, buf in enumerate(bufs):
+                dbuf = buf[1]
+                labels.append([blk.choose for blk in dbuf])
+                input_ids = torch.zeros(64, 128, dtype=torch.long, device=device)
+                attn_mask = torch.zeros(64, 128, dtype=torch.long, device=device)
+                for j, blk in enumerate(dbuf.blocks):
+                    temp_id = blk.ids
+                    input_ids[j, 0] = 101
+                    for idx, tok in enumerate(temp_id):
+                        input_ids[j, idx+1] = tok
+                    attn_mask[j, :idx+2] = 1 # idx多1以及cls多1
+                in_ids[i, :, :] = input_ids
+                a_mask[i, :, :] = attn_mask
+            
+            keep_len = [len(l) for l in labels]
+            long_labels = torch.tensor([l for label in labels for l in label], dtype=torch.long, device=device)
+            result = model(in_ids, a_mask) # [ 4(batch_size), 64(block_size), 2(two_class) ]
 
-                for bufs in train_loader : # batch 也許可以考慮一個batch是 J -> R -> J
-                    batch_steps += 1
-                    if m_idx == 0 :
-                        # images, true_masks = batch['image'], batch['mask']
-                        inputs = torch.zeros(4, len(bufs), CAPACITY, dtype=torch.long, device=device)
-                        for i, buf in enumerate(bufs):
-                            buf.export(out=(inputs[0, i], inputs[1, i], inputs[2, i])) # 和reasoner一樣設定input
-                        # Train the introspector after labeling
-                        for i, buf in enumerate(bufs):
-                            buf.export_relevance(device=device, out=inputs[3, i]) # 用來設定judge的label(由relevance)
-                        # Label the relevance by the current reasoner  
-                        loss, logits = model(*inputs[:3], labels=inputs[3])
-                        for i, buf in enumerate(bufs):
-                            # _score_blocks把原本每個token各一個的分數轉為每個block(句子)一個
-                            _write_estimation(_file, buf, _score_blocks(buf, torch.sigmoid(logits[i]))) # 把這輪跑完的relevance更新到檔案上
-                    else :
-                        # Make inputs for reasoner
-                        inputs = torch.zeros(3, len(bufs), CAPACITY, dtype=torch.long, device=device)  # [ 3, BATCH, 512 ]
-                        # 因為tokenizer.convert_ids_to_tokens(0) = '[PAD]' 所以等於是天生PAD然後再填Buffer每個Block的ids進去 (buf.export那裡的操作)
-                        blk_pos = []
-                        for i, buf in enumerate(bufs):
-                            # export -> ids, att_masks, types, blk_position
-                            _, _, _, b_p = buf.export(out=(inputs[0, i], inputs[1, i], inputs[2, i])) # 其實搞不太懂怎麼用export把buf的資訊給inputs的 python還能搞指標的?
-                            blk_pos.append(b_p) # b_p : [ 1, NUM_OF_BLOCK ] 選到的(從interface那邊)每個block在相應buffer中的位置(之後損失函數那邊才可跟label比)
-                        # Extract the labels for reasoner, e.g. start and end position for QA reasoner
-                        # crucials (list) : BATCH * [1, NUM_OF_BLOCK_blk_type==0]
-                        labels, crucials = model.export_labels(bufs, device) # TODO A
-                        result = model(*inputs, labels=labels, pos = blk_pos)
-                        result = result[0] if isinstance(result, tuple) else result # loss of reasoner
-                        loss = sum(result).mean()
 
-                        ### 感覺可以考慮做個local loss監控一下reasoner的訓練情況
-                        ### 另外有必要去檢查一下interface 總覺得常常看到整個batch都是一樣內容的情況
-                        ### 還是我錯怪interface了阿 也可能是跑intervention的時候跳的 嗎
+            optimizer.zero_grad()
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm = 10)
+            optimizer.step()     
+            
+            s_max = F.softmax(out_logit, dim=1)
+            preds_list = torch.max(s_max, dim=1).indices.detach().cpu().numpy()
+            labels_list = long_labels.detach().cpu().numpy()
+            
+            sum_correct = (preds_list == labels_list).sum()
+            len_label = len(labels_list)
+            
+            acc_batch = (sum_correct / len_label).item()
+            epoch_sum += sum_correct
+            epoch_len += len_label
+            
+            batch_tp = np.logical_and(labels_list == 1, preds_list == 1).sum(axis=0)
+            batch_fn = np.logical_and(labels_list == 1, preds_list == 0).sum(axis=0)
+            batch_fp = np.logical_and(labels_list == 0, preds_list == 1).sum(axis=0)            
+            epoch_tp += batch_tp
+            epoch_fn += batch_fn
+            epoch_fp += batch_fp
+            # logging.info(f'Model {m_name} : batch acc -> {acc_batch:.3f}')
 
-                        _intervention(_file, bufs, labels, crucials, result, model)
+            # _intervention(_file, bufs, labels, crucials, result, model)
 
-                    optimizer[m_idx].zero_grad(set_to_none=True)
-                    loss.backward()
-                    torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm = 10)
-                    optimizer[m_idx].step()
 
-                    pbar.update(len(train_loader)) # 吧?
-                    logging.debug(f"Loader len : {len(train_loader)}")
+            # scheduler.step(acc_batch)
 
-                    global_step += 1
-                    epoch_loss[m_idx] += loss.item()
-                    # experiment.log({
-                    #     'train loss': loss.item(),
-                    #     'step': global_step,
-                    #     'epoch': epoch
-                    # })
-                    pbar.set_postfix(**{'loss (batch)': loss.item()}) # 這東西顯示怪怪的
+            global_step += 1
+            epoch_loss += loss.item()
+            pbar.set_postfix(**{
+                'acc (batch)': acc_batch,
+                'loss (batch)': loss.item()
+                })
+            # 'f1 (batch)': 2*batch_tp / (2*batch_tp + batch_fn + batch_fp),
+            # 'recall (batch)': batch_tp / (batch_tp + batch_fn),
+            # 'precision (batch)': batch_tp / (batch_tp + batch_fp),
+            
+        logging.info(f"""
+            Model {m_name} (epoch) : 
+                loss      ->  {epoch_loss / batch_steps:.4f} 
+                accuracy  ->  {(epoch_sum/epoch_len).item():.4f}
+                precision ->  {epoch_tp / (epoch_tp + epoch_fp):.4f}
+                recall    ->  {epoch_tp / (epoch_tp + epoch_fn):.4f}
+                f1-score  ->  {2*epoch_tp / (2*epoch_tp + epoch_fn + epoch_fp):.4f}
+                    """)
+        
+        if DO_VALID and not toy :
+            
+            model.eval()
+            vepoch_loss = 0
+            vbatch_steps = 0
+            vepoch_sum = 0
+            vepoch_len = 0
+            vepoch_tp = 0
+            vepoch_fn = 0
+            vepoch_fp = 0
+            with torch.no_grad() :
+                for bufs in (pbar:=tqdm(val_loader, desc='Validation', unit=f'Paragraph({batch_size})')) : 
+                    vbatch_steps += 1
+                    labels = []
+                    in_ids = torch.zeros(len(bufs), 64, 128, dtype=torch.long, device=device)
+                    a_mask = torch.zeros(len(bufs), 64, 128, dtype=torch.long, device=device)
+                    for i, buf in enumerate(bufs):
+                        dbuf = buf[1]
+                        labels.append([blk.choose for blk in dbuf])
+                        input_ids = torch.zeros(64, 128, dtype=torch.long, device=device)
+                        attn_mask = torch.zeros(64, 128, dtype=torch.long, device=device)
+                        for j, blk in enumerate(dbuf.blocks):
+                            temp_id = blk.ids
+                            input_ids[j, 0] = 101
+                            for idx, tok in enumerate(temp_id):
+                                input_ids[j, idx+1] = tok
+                            attn_mask[j, :idx+2] = 1 # idx多1以及cls多1
+                        in_ids[i, :, :] = input_ids
+                        a_mask[i, :, :] = attn_mask
                     
+                    flag = False
+                    for b, l in enumerate(keep_len):
+                        if not flag:
+                            out_logit = result[b, :l, :]
+                            flag = True
+                        else:
+                            out_logit = torch.cat((out_logit, result[b, :l, :]), 0)
+                    loss_fct = CrossEntropyLoss()
+                    loss = loss_fct(out_logit.view(-1, 2), long_labels.view(-1))
+                    
+                    s_max = F.softmax(out_logit, dim=1)
+                    preds_list = torch.max(s_max, dim=1).indices.detach().cpu().numpy()
+                    labels_list = long_labels.detach().cpu().numpy()
+                    
+                    sum_correct = (preds_list == labels_list).sum()
+                    len_label = len(labels_list)
+                    
+                    acc_batch = (sum_correct / len_label).item()
+                    vepoch_sum += sum_correct
+                    vepoch_len += len_label
+                    
+                    vbatch_tp = np.logical_and(labels_list == 1, preds_list == 1).sum(axis=0)
+                    vbatch_fn = np.logical_and(labels_list == 1, preds_list == 0).sum(axis=0)
+                    vbatch_fp = np.logical_and(labels_list == 0, preds_list == 1).sum(axis=0)            
+                    vepoch_tp += vbatch_tp
+                    vepoch_fn += vbatch_fn
+                    vepoch_fp += vbatch_fp
+                    
+                    vepoch_loss += loss.item()
+                    global_step += 1
+            logging.info(f"""
+            Model {m_name} (validation) : 
+                loss      ->  {vepoch_loss / vbatch_steps:.4f} 
+                accuracy  ->  {(vepoch_sum/vepoch_len).item():.4f}
+                precision ->  {vepoch_tp / (vepoch_tp + vepoch_fp):.4f}
+                recall    ->  {vepoch_tp / (vepoch_tp + vepoch_fn):.4f}
+                f1-score  ->  {2*vepoch_tp / (2*vepoch_tp + vepoch_fn + vepoch_fp):.4f}
+                    """)
 
-                    # Evaluation round
-                    # division_step = (n_train // (5 * batch_size))
-                    # if division_step > 0:
-                    #     if global_step % division_step == 0:
-                    #         histograms = {}
-                    #         for tag, value in model.named_parameters():
-                    #             tag = tag.replace('/', '.')
-                    #             if not (torch.isinf(value) | torch.isnan(value)).any():
-                    #                 # histograms['Weights/' + tag] = wandb.Histogram(value.data.cpu())
-                    #             if not (torch.isinf(value.grad) | torch.isnan(value.grad)).any():
-                    #                 # histograms['Gradients/' + tag] = wandb.Histogram(value.grad.data.cpu())
-
-                    #         val_score = evaluate(model, val_loader, device, amp)
-                    #         scheduler.step(val_score)
-
-                    #         logging.info('Validation Dice score: {}'.format(val_score))
-                            # try:
-                            #     experiment.log({
-                            #         'learning rate': optimizer.param_groups[0]['lr'],
-                            #         'validation Dice': val_score,
-                            #         'images': wandb.Image(images[0].cpu()),
-                            #         'masks': {
-                            #             'true': wandb.Image(true_masks[0].float().cpu()),
-                            #             'pred': wandb.Image(masks_pred.argmax(dim=1)[0].float().cpu()),
-                            #         },
-                            #         'step': global_step,
-                            #         'epoch': epoch,
-                            #         **histograms
-                            #     })
-                            # except:
-                            #     pass
-                scheduler[m_idx].step(loss)
-            
-            _file.close()
-            if temp_loss is not None :
-                temp_loss /= batch_steps
-            
-            if save_checkpoint:
-                dir_ch_this = Path(dir_checkpoint / 'checkpoint' / m_name)
-                Path(dir_ch_this).mkdir(parents=True, exist_ok=True)
-                state_dict = model.state_dict()
-                torch.save(state_dict, str(dir_ch_this / 'checkpoint_epoch{}.pth'.format(epoch)))
-                logging.info(f'Model {m_name} : Checkpoint {epoch} saved!')
-
-            logging.info(f'Model {m_name} : epoch loss -> {epoch_loss[m_idx] / batch_steps}')
-        if epoch > 1 :
-            interface.apply_changes_from_dir(TMP_DIR)
+        if save_checkpoint:
+            dir_ch_this = Path(dir_checkpoint / 'checkpoint' / m_name)
+            Path(dir_ch_this).mkdir(parents=True, exist_ok=True)
+            state_dict = model.state_dict()
+            torch.save(state_dict, str(dir_ch_this / 'checkpoint_epoch{}_{}.pth'.format(epoch, m_name)))
+            logging.info(f'Model {m_name} : Checkpoint {epoch} saved!')
 
 # from importlib import reload
 # import models.model as mod
@@ -672,9 +697,11 @@ def get_args():
     parser.add_argument('--model-name', '-m', type=str, default=None,
                         choices = ['default', 'large'], help='Specifiy the name of BERT pre-trained model')
     parser.add_argument('--baseline', action='store_true',
-                        help='Only train Reasoner model')
+                        help='Train Reasoner model')
     parser.add_argument('--judge', action='store_true',
-                        help='Only train Judge model')
+                        help='Train Judge model')
+    parser.add_argument('--hier', action='store_true',
+                        help='Train Hier model')
     parser.add_argument('--toy', action='store_true',
                         help='Use toy dataset')
     return parser.parse_args()
@@ -707,7 +734,7 @@ if __name__ == '__main__':
     # if args.baseline==
     
     # try:
-    if not args.baseline:
+    if args.judge:
         sep_train_weak(
             model = judger, # 之後可以考慮加入判斷是不是list的來一次練兩個 (已經改了)
             m_name = 'Judge', # model_name
@@ -717,10 +744,23 @@ if __name__ == '__main__':
             learning_rate=args.lr,  
             toy=args.toy,     
         )
-    if not args.judge:
+    if args.baseline:
         sep_train(
             model = reasoner, # 之後可以考慮加入判斷是不是list的來一次練兩個 (已經改了)
             m_name = 'Reasoner', # model_name
+            device = device,
+            epochs=args.epochs,
+            batch_size=args.batch_size,
+            learning_rate=args.lr,
+            toy=args.toy,
+        )
+    if args.hier:
+        encoder = AutoModel.from_pretrained("bert-base-chinese")
+        hier_model = HierarchicalBert(encoder)
+        
+        hier_train(
+            model = hier_model, # 之後可以考慮加入判斷是不是list的來一次練兩個 (已經改了)
+            m_name = 'hier', # model_name
             device = device,
             epochs=args.epochs,
             batch_size=args.batch_size,
