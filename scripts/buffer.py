@@ -24,7 +24,7 @@ def textIoU(pred, answer) :
 
 class Block:
     tokenizer = AutoTokenizer.from_pretrained(BIG_MODEL_NAME)
-    def __init__(self, ids, pos, blk_type=1, choose = 0, place = -1, **kwargs):
+    def __init__(self, ids, pos, blk_type=1, choose = 0, place = -1, ori_text="", **kwargs):
         self.ids = ids
         self.pos = pos # 在第幾句 (全局而言)
         self.blk_type = blk_type # 0 sentence A, 1 sentence B
@@ -32,6 +32,7 @@ class Block:
         self.estimation = 0
         self.choose = choose
         self.place = place # 該buffer中的第幾句
+        self.ori_text = ori_text
         self.__dict__.update(kwargs)
     def __lt__(self, rhs):
         return self.blk_type < rhs.blk_type or (self.blk_type == rhs.blk_type and self.pos < rhs.pos)
@@ -190,14 +191,14 @@ class Buffer:
             breakpoint()
         for tmp, blk_chose in d:
             
-            tmp += '[SEP]' # 放棄開頭的CLS了
+            # tmp += '[SEP]' # 放棄開頭的CLS了
             cnt += 1
             star += 1
             # if cnt==84109:
             #     breakpoint()
             # choose : small label for blocks
-            ret.insert(Block(tokenizer(tmp, add_special_tokens=False).input_ids, 
-                             cnt, choose = blk_chose, place = star))
+            ret.insert(Block(tokenizer(tmp+'[SEP]', add_special_tokens=False).input_ids, 
+                             cnt, choose = blk_chose, place = star, ori_text=tmp))
         # if ans_cnt==1056:
         #     breakpoint()
         tmp_kwargs = {}
