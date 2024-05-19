@@ -756,7 +756,7 @@ if __name__ == '__main__':
         )
     if args.hier:
         encoder = AutoModel.from_pretrained("bert-base-chinese")
-        hier_model = HierarchicalBert(encoder)
+        hier_model = HierarchicalBert(encoder).to(device)
         
         hier_train(
             model = hier_model, # 之後可以考慮加入判斷是不是list的來一次練兩個 (已經改了)
