@@ -82,7 +82,7 @@ for i, para in tqdm(enumerate(sw_dataset)):
     total_tp += round_tp
     total_fn += round_fn
     total_fp += round_fp
-    total_tn = round_tn
+    total_tn += round_tn
     total_sum += (round_label==round_preds).sum()
     total_len += len(round_preds)
     print(f"""
