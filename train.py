@@ -210,7 +210,7 @@ def hier_train(
                     input_ids[j, 0] = 101
                     # for idx, tok in enumerate(temp_id):
                     #     input_ids[j, idx+1] = tok
-                    input_ids[j, 1:len(temp_id)+1] = temp_id
+                    input_ids[j, 1:len(temp_id)+1] = temp_id[:127]
                     attn_mask[j, :len(temp_id)+1] = 1 # idx多1以及cls多1
                 in_ids[i, :, :] = input_ids
                 a_mask[i, :, :] = attn_mask
