@@ -248,7 +248,7 @@ def hier_train(
             
             s_max = F.softmax(out_logit, dim=1)
             preds_list = torch.max(s_max, dim=1).indices.detach().cpu().numpy()
-            labels_list = long_labels.detach().cpu().numpy()
+            labels_list = out_label.view(-1).detach().cpu().numpy()
             
             sum_correct = (preds_list == labels_list).sum()
             len_label = len(labels_list)
