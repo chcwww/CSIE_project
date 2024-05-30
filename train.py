@@ -215,8 +215,8 @@ def hier_train(
                 in_ids[i, :, :] = input_ids
                 a_mask[i, :, :] = attn_mask
             
-            keep_len = [len(l) for l in labels]
-            long_labels = torch.tensor([l for label in labels for l in label], dtype=torch.long, device=device)
+            keep_len = [len(l) if len(l) < 64 else 64 for l in labels]
+            long_labels = torch.tensor([l for label in labels for i, l in enumerate(label) if i < 64], dtype=torch.long, device=device)            
             result = model(in_ids, a_mask) # [ 4(batch_size), 64(block_size), 2(two_class) ]
 
             flag = False
