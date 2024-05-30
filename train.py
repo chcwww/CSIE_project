@@ -236,6 +236,7 @@ def hier_train(
                     flag = True
                 else:
                     out_label = torch.cat((out_label, the_lb), 0)
+            out_label.to(device)
             
             loss_fct = CrossEntropyLoss()
             loss = loss_fct(out_logit.view(-1, 2), out_label.view(-1))
