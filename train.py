@@ -216,7 +216,7 @@ def hier_train(
                 a_mask[i, :, :] = attn_mask
             
             keep_len = [len(l) if len(l) < 64 else 64 for l in labels]
-            long_labels = torch.tensor([l for label in labels for i, l in enumerate(label) if i < 64], dtype=torch.long, device=device)            
+            # long_labels = torch.tensor([l for label in labels for i, l in enumerate(label) if i < 64], dtype=torch.long, device=device)            
             result = model(in_ids, a_mask) # [ 4(batch_size), 64(block_size), 2(two_class) ]
 
             flag = False
@@ -227,8 +227,17 @@ def hier_train(
                 else:
                     out_logit = torch.cat((out_logit, result[b, :l, :]), 0)
                     
+            out_label = torch.zeros(out_logit.shape)
+            flag = False
+            for b, l in enumerate(keep_len):
+                if not flag:
+                    out_label = labels[b][:l]
+                    flag = True
+                else:
+                    out_label = torch.cat((out_label, labels[b][:l]), 0)
+            
             loss_fct = CrossEntropyLoss()
-            loss = loss_fct(out_logit.view(-1, 2), long_labels.view(-1))
+            loss = loss_fct(out_logit.view(-1, 2), out_label.view(-1))
 
             optimizer.zero_grad()
             loss.backward()
