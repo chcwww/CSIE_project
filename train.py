@@ -206,7 +206,7 @@ def hier_train(
                 attn_mask = torch.zeros(64, 128, dtype=torch.long, device=device)
                 for j, blk in enumerate(input_buf):
                     temp_id = torch.LongTensor(blk.ids)
-                    temp_id.to(device)
+                    temp_id = temp_id.to(device)
                     input_ids[j, 0] = 101
                     # for idx, tok in enumerate(temp_id):
                     #     input_ids[j, idx+1] = tok
@@ -236,8 +236,7 @@ def hier_train(
                     flag = True
                 else:
                     out_label = torch.cat((out_label, the_lb), 0)
-            out_label.to(device)
-            out_logit.to(device)
+            out_label = out_label.to(device)
             
             loss_fct = CrossEntropyLoss()
             loss = loss_fct(out_logit.view(-1, 2), out_label.view(-1))
