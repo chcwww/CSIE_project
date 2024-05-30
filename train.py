@@ -200,16 +200,17 @@ def hier_train(
             a_mask = torch.zeros(len(bufs), 64, 128, dtype=torch.long, device=device)
             for i, buf in enumerate(bufs):
                 dbuf = buf[1]
-                dbuf.blocks = dbuf.blocks[:64]
+                input_buf = dbuf.blocks[:64] # 真的超過就... 算了
                 labels.append([blk.choose for blk in dbuf])
                 input_ids = torch.zeros(64, 128, dtype=torch.long, device=device)
                 attn_mask = torch.zeros(64, 128, dtype=torch.long, device=device)
-                for j, blk in enumerate(dbuf.blocks):
+                for j, blk in enumerate(input_buf):
                     temp_id = blk.ids
                     input_ids[j, 0] = 101
-                    for idx, tok in enumerate(temp_id):
-                        input_ids[j, idx+1] = tok
-                    attn_mask[j, :idx+2] = 1 # idx多1以及cls多1
+                    # for idx, tok in enumerate(temp_id):
+                    #     input_ids[j, idx+1] = tok
+                    input_ids[j, 1:len(temp_id)+1] = temp_id
+                    attn_mask[j, :len(temp_id)+1] = 1 # idx多1以及cls多1
                 in_ids[i, :, :] = input_ids
                 a_mask[i, :, :] = attn_mask
             
@@ -702,6 +703,7 @@ def get_args():
     parser.add_argument('--learning-rate', '-l', metavar='LR', type=float, default=1e-5,
                         help='Learning rate', dest='lr')
     parser.add_argument('--load', '-f', type=str, default=False, help='Load model from a .pth file')
+    parser.add_argument('--load2', '-f2', type=str, default=False, help='Load model from a .pth file')
     # parser.add_argument('--scale', '-s', type=float, default=0.5, help='Downscaling factor of the images')
     parser.add_argument('--validation', '-v', dest='val', type=float, default=10.0,
                         help='Percent of the data that is used as validation (0-100)')
@@ -745,6 +747,11 @@ if __name__ == '__main__':
         state_dict = torch.load(args.load, map_location=device)
         reasoner.load_state_dict(state_dict)
         logging.info(f'Model loaded from {args.load}')
+        
+    if args.load2: # 之後再改 反正先False
+        state_dict = torch.load(args.load2, map_location=device)
+        judger.load_state_dict(state_dict)
+        logging.info(f'Model loaded from {args.load2}')
 
     # if args.baseline==
     
