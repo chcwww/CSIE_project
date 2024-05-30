@@ -205,7 +205,8 @@ def hier_train(
                 input_ids = torch.zeros(64, 128, dtype=torch.long, device=device)
                 attn_mask = torch.zeros(64, 128, dtype=torch.long, device=device)
                 for j, blk in enumerate(input_buf):
-                    temp_id = torch.LongTensor(blk.ids, device=device)
+                    temp_id = torch.LongTensor(blk.ids)
+                    temp_id.to(device)
                     input_ids[j, 0] = 101
                     # for idx, tok in enumerate(temp_id):
                     #     input_ids[j, idx+1] = tok
