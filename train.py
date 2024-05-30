@@ -230,11 +230,12 @@ def hier_train(
             out_label = torch.zeros(out_logit.shape)
             flag = False
             for b, l in enumerate(keep_len):
+                the_lb = torch.LongTensor(labels[b][:l])
                 if not flag:
-                    out_label = labels[b][:l]
+                    out_label = the_lb
                     flag = True
                 else:
-                    out_label = torch.cat((out_label, labels[b][:l]), 0)
+                    out_label = torch.cat((out_label, the_lb), 0)
             
             loss_fct = CrossEntropyLoss()
             loss = loss_fct(out_logit.view(-1, 2), out_label.view(-1))
