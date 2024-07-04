@@ -698,3 +698,114 @@ class ALLonBert_v3(torch.nn.Module, Reasoner) :
             outputs = ([loss], mu_label, ) + outputs
             # breakpoint()
         return outputs
+    
+    
+class ALLonBert_v4(torch.nn.Module, Reasoner) : # old v2
+
+    def __init__(self, m_name) :
+        super(ALLonBert_v2, self).__init__()
+        self.dropouts = torch.nn.Dropout(0.1)
+        self.roberta = AutoModel.from_pretrained(m_name)
+        bert_dim = self.roberta.config.hidden_size
+        self.tokenizer = AutoTokenizer.from_pretrained(m_name)
+        self.classifier = torch.nn.Linear(bert_dim, 2)
+
+    @classmethod
+    def export_labels(cls, bufs, device): # TODO 根據新的標籤類型來更改
+        labels = []
+        for i, buf in enumerate(bufs):
+            labels.append(buf[0].label) # 第一塊(qbuf)身上的label
+        return labels, [[b for b in buf if b.blk_type == 0] for buf in bufs]
+
+    def forward(
+            self,
+            input_ids = None,
+            attention_mask = None,
+            token_type_ids = None,
+            position_ids = None,
+            head_mask = None,
+            inputs_embeds = None,
+            labels = None,
+            # position of cls token
+            pos = None, # important : should modify "reasoner_module.py"
+            device = None,
+            debug_buf = None,
+    ) :
+        # input_ids, attention_mask, token_type_ids, labels, pos = *inputs, labels, blk_pos
+        self.roberta = self.roberta.to(device)
+        # outputs = roberta(
+        outputs = self.roberta(
+            input_ids,
+            attention_mask = attention_mask,
+            token_type_ids = token_type_ids,
+            position_ids = position_ids,
+            head_mask = head_mask,
+            inputs_embeds = inputs_embeds,
+        )
+        
+        # outputs[0].shape [1, 512, 768]
+        # outputs[1].shape [1, 768]
+
+        sep_list = []
+        for ina in input_ids :
+            sep_tmp = []
+            text_tmp = []
+            place = 0
+            for ink in ina :
+                if int(ink.detach().cpu()) == 102 :
+                    sep_tmp.append(place)
+                place += 1
+                text_tmp.append(ink)
+            sep_list.append(sep_tmp)
+
+        sequence_outputs = outputs[0] # last_hidden_state
+
+        sequence_outputs = self.dropouts(sequence_outputs)
+        # sequence_outputs = dropouts(sequence_outputs)
+        
+        # sequence_outputs.shape [ 1 (batch size), 512 (token len limit), 768 (bert dim) ]
+        logits_list = []
+        for nu, n_list in enumerate(sep_list) : # 為了避免每組的Block數不一樣 所以全部分開預測
+            try:
+                out_tensor = torch.mean(sequence_outputs[nu, 1:n_list[0], :], 0).view(1, -1)
+                # 想直接改成token-wise的跑loss
+                for i in range(len(n_list)-1) :
+                    # 整句取平均
+                    temp_tensor = torch.mean(sequence_outputs[nu, n_list[i]+1:n_list[i+1], :], 0).view(1, -1)
+                    out_tensor = torch.cat((out_tensor, temp_tensor), 0)
+                # out_tensor.shape [7 (num of block), 768]
+                logits = self.classifier(out_tensor)
+                if (logits==logits).sum()!=len(logits)*2: # check nan
+                    breakpoint()
+                # logits.shape [7 (num of block), 2]
+                logits_list.append(logits)
+            except:
+                breakpoint()
+                print('Weird buffer exist..')
+
+        outputs = (logits_list, )
+        
+        if labels is not None :
+            losses = []
+            mu_label = []
+            loss_func = CrossEntropyLoss()
+            for batch_id, logit in enumerate(logits_list) :
+                # 原來之前是這裡寫錯
+                soft_max = F.softmax(logit, dim = 1) # F.log_softmax
+                local_label = torch.zeros(len(logit), device = device)
+                local_pos = pos[batch_id].copy()
+                local_pos.pop(0) # 第一個是[CLS]
+                local_true = labels[batch_id].copy()
+                for local_id, blk_id in enumerate(local_pos) :
+                    if local_true[blk_id-1] == 1 :
+                        local_label[local_id] = 1
+                local_label = local_label.long()
+                # 算cross entropy
+                l_loss = loss_func(logit, local_label.view(-1).to(device))
+                if l_loss != l_loss:
+                    breakpoint()
+                losses.append(l_loss)
+                mu_label.append(local_label.view(-1))
+            outputs = (losses, mu_label, ) + outputs
+            # breakpoint()
+        return outputs
