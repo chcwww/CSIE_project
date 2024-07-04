@@ -703,7 +703,7 @@ class ALLonBert_v3(torch.nn.Module, Reasoner) :
 class ALLonBert_v4(torch.nn.Module, Reasoner) : # old v2
 
     def __init__(self, m_name) :
-        super(ALLonBert_v2, self).__init__()
+        super(ALLonBert_v4, self).__init__()
         self.dropouts = torch.nn.Dropout(0.1)
         self.roberta = AutoModel.from_pretrained(m_name)
         bert_dim = self.roberta.config.hidden_size
