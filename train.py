@@ -19,12 +19,15 @@ import torchvision.transforms.functional as TF
 from torch import optim
 from torch.utils.data import DataLoader, random_split
 
+print(torch.cuda.is_available())
+print(torch.cuda.device_count())
+
 ## project
 from utils.util import SAVE_DIR, TMP_DIR, LOG_DIR, USE_PATH, CAPACITY, MODEL_NAME, BIG_MODEL_NAME
 from utils.memreplay import mem_replay, _score_blocks
 from scripts.data_helper import SimpleListDataset, BlkPosInterface, find_lastest_checkpoint
 from scripts.buffer import buffer_collate
-from models.model import Introspector, ALLonBert_v2, ALLonBert_v3
+from models.model import Introspector, ALLonBert_v2, ALLonBert_v3, ALLonBert_v4
 from models.hierbert import HierarchicalBert
 
 print(f"Dir : {os.getcwd()}")
@@ -34,7 +37,7 @@ dir_checkpoint = Path(SAVE_DIR)
 def _write_estimation(_file, buf, relevance_blk):
     for i, blk in enumerate(buf):
         _file.write(f'{blk.pos} {relevance_blk[i].item()}\n')
-
+ 
 def _write_changes(_file, blk, key, value): # intervention才會用到的東西
     _file.write('{} {} {}\n'.format(blk.pos, key, value))
 
@@ -212,6 +215,16 @@ def hier_train(
                     #     input_ids[j, idx+1] = tok
                     input_ids[j, 1:len(temp_id)+1] = temp_id[:127]
                     attn_mask[j, :len(temp_id)+1] = 1 # idx多1以及cls多1
+                if j!=63:
+                  while(j!=64):
+                    temp_id = torch.LongTensor(input_buf[0].ids)
+                    temp_id = temp_id.to(device)
+                    input_ids[j, 0] = 101
+                    # for idx, tok in enumerate(temp_id):
+                    #     input_ids[j, idx+1] = tok
+                    input_ids[j, 1:len(temp_id)+1] = temp_id[:127]
+                    attn_mask[j, :len(temp_id)+1] = 1 # idx多1以及cls多1
+                    j+=1    
                 in_ids[i, :, :] = input_ids
                 a_mask[i, :, :] = attn_mask
             
@@ -749,7 +762,7 @@ if __name__ == '__main__':
     if args.model_name is not None and args.model_name == 'large' :
         MODEL_NAME = BIG_MODEL_NAME # 有指定的話就給個新的
         
-    reasoner = ALLonBert_v3(MODEL_NAME).to(device)
+    reasoner = ALLonBert_v4(MODEL_NAME).to(device)
     judger = Introspector(MODEL_NAME).to(device)
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
     
