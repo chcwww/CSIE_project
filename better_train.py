@@ -442,7 +442,7 @@ if __name__ == '__main__':
     if args.model_name is not None and args.model_name == 'large' :
         MODEL_NAME = BIG_MODEL_NAME # 有指定的話就給個新的
     
-    MODEL_CLASS = exec(f'ALLonBert_v{args.model_num}')
+    MODEL_CLASS = exec(f'ALLonBert_v{str(args.model_num)}')
     
     reasoner = MODEL_CLASS(MODEL_NAME).to(device)
     judger = Introspector(MODEL_NAME).to(device)
