@@ -181,7 +181,7 @@ def sep_train(
     rec_k = []
     f1_k = []
     kf = KFold(n_splits=3, shuffle=True, random_state=42)
-    for fold, (train_idx, valid_idx) in enumerate(kf.split(sw_dataset)):
+    for fold, (train_idx, valid_idx) in enumerate(kf.split(sw_dataset), start=1):
         n_train = len(train_idx)
         n_val = len(valid_idx)
         # 2.b Create interface
@@ -375,7 +375,13 @@ def sep_train(
                 prec_k.append(vepoch_tp / (vepoch_tp + vepoch_fp))
                 rec_k.append(vepoch_tp / (vepoch_tp + vepoch_fn))
                 f1_k.append(2*vepoch_tp / (2*vepoch_tp + vepoch_fn + vepoch_fp))
-
+    logging.info(f"""
+    Model {m_name} (validation) Cross Validation (3 Fold) : 
+        accuracy  ->  {sum(acc_k)/len(acc_k):.4f}
+        precision ->  {sum(prec_k)/len(prec_k):.4f}
+        recall    ->  {sum(rec_k)/len(rec_k):.4f}
+        f1-score  ->  {sum(f1_k)/len(f1_k):.4f}
+            """)        
         # if save_checkpoint:
         #     dir_ch_this = Path(dir_checkpoint / 'checkpoint' / m_name)
         #     Path(dir_ch_this).mkdir(parents=True, exist_ok=True)
@@ -425,7 +431,7 @@ if __name__ == '__main__':
     DATA_NAME = args.data
         
     # Can chain call
-    DATA_PATH = AttributeDict({
+    USE_PATH = AttributeDict({
         'strong' : AttributeDict({
             'train' : Path(os.path.join(os.getcwd(), 'data', f'{DATA_NAME}_strong_train.pkl')),
             'test' : Path(os.path.join(os.getcwd(), 'data', f'{DATA_NAME}_strong_test.pkl')),
