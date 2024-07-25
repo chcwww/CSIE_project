@@ -568,7 +568,7 @@ def valid_train(
                         info = [t for t in buf.export(device=device)]
                         inputs = [t.unsqueeze(0) for t in info if not isinstance(t, list)]
                         # *[input_ids, attn_mask, token_type_ids]
-                        output = reason_model(*inputs)
+                        output = model(*inputs)
 
                         # 這裡只會有一維(batch_size=1)而已
                         softmax_preds = F.softmax(output[0][0], dim = 1)
@@ -742,7 +742,7 @@ if __name__ == '__main__':
     if args.valid:
         valid_train(
             models = [reasoner, judger], # 之後可以考慮加入判斷是不是list的來一次練兩個 (已經改了)
-            m_name = 'Reasoner', # model_name
+            m_name = 'Valid-Mix', # model_name
             device = device,
             epochs=args.epochs,
             batch_size=args.batch_size,
