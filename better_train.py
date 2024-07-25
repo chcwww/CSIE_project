@@ -555,6 +555,7 @@ def valid_train(
                 total_tn = 0
                 total_sum = 0
                 total_len = 0
+                times='3,5'
                 model.eval()
                 intro_model.eval()
                 with torch.no_grad() :
@@ -563,7 +564,7 @@ def valid_train(
                         dbuf_label = [blk.choose for blk in dbuf.blocks]
                         # pdb.set_trace()
                         # 推論實在是太慢了
-                        buf, relevance_score = mem_replay(intro_model, qbuf, dbuf, times='3,5', device=device) # TODO times hyperparam
+                        buf, relevance_score = mem_replay(intro_model, qbuf, dbuf, times=times, device=device) # TODO times hyperparam
                         # Model預設想吃多BATCH 故要unsqueeze讓他多一維
                         info = [t for t in buf.export(device=device)]
                         inputs = [t.unsqueeze(0) for t in info if not isinstance(t, list)]
@@ -575,8 +576,7 @@ def valid_train(
                         preds = torch.max(softmax_preds, dim=1).indices
 
                         preds_list = [i+1 for i, p in enumerate(preds) if p==1]
-                        # selected_blk = itemgetter(*preds_list)(buf.blocks)
-                        selected_blk = [buf.blocks[i] for i in preds_list]
+                        selected_blk = itemgetter(*preds_list)(buf.blocks)
                         # trans to paragraph string
                         selected_point = [tokenizer.decode(blk.ids[:-1]).replace(' ', '') for blk in selected_blk]
                         selected_blk_list = [blk.place for blk in buf.blocks]
