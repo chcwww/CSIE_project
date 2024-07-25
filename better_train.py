@@ -430,7 +430,7 @@ def valid_train(
         val_set = MySubset(sw_dataset, valid_idx)
         
         interface = BlkPosInterface(train_set)
-        interface_val = BlkPosInterface(val_set)
+        # interface_val = BlkPosInterface(val_set)
 
         ## Original module part
         # 3. Create data loaders (args)
