@@ -616,7 +616,7 @@ def valid_train(
                 acc_k.append(total_sum/total_len)
                 prec_k.append(total_tp / (total_tp + total_fp))
                 rec_k.append(total_tp / (total_tp + total_fn))
-                f1_k.append(2*total_tp / (2*total_tp + total_fn + total_fp_))
+                f1_k.append(2*total_tp / (2*total_tp + total_fn + total_fp))
     logging.info(f"""
     Model {m_name} (validation) Cross Validation (3 Fold) : 
         accuracy  ->  {sum(acc_k)/len(acc_k):.4f}
