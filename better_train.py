@@ -563,7 +563,7 @@ def valid_train(
                         dbuf_label = [blk.choose for blk in dbuf.blocks]
                         # pdb.set_trace()
                         # 推論實在是太慢了
-                        buf, relevance_score = mem_replay(intro_model, qbuf, dbuf, times=times, device=device) # TODO times hyperparam
+                        buf, relevance_score = mem_replay(intro_model, qbuf, dbuf, times='3,5', device=device) # TODO times hyperparam
                         # Model預設想吃多BATCH 故要unsqueeze讓他多一維
                         info = [t for t in buf.export(device=device)]
                         inputs = [t.unsqueeze(0) for t in info if not isinstance(t, list)]
