@@ -422,6 +422,7 @@ def valid_train(
     for fold, (train_idx, valid_idx) in enumerate(kf.split(sw_dataset), start=1):
         n_train = len(train_idx)
         n_val = len(valid_idx)
+        sw_dataset = SimpleListDataset(USE_PATH.strong.train)
         # 2.b Create interface
         # n_val = int((len(sw_dataset))*val_percent)
         # n_train = len(sw_dataset) - n_val
@@ -606,7 +607,7 @@ def valid_train(
                         #     recall    ->  {round_tp / (round_tp + round_fn):.4f}
                         #     f1-score  ->  {2*round_tp / (2*round_tp + round_fn + round_fp):.4f}
                         #         """)
-                print(f"""
+                logging.info(f"""
                     Test data final result :
                         accuracy  ->  {total_sum/total_len:.4f}
                         precision ->  {total_tp / (total_tp + total_fp):.4f}
